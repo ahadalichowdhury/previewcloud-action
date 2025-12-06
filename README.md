@@ -27,13 +27,6 @@ Perfect for:
 ## 📌 Usage
 
 ```yaml
-jobs:
-  preview:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Create PreviewCloud environment
         uses: ahadalichowdhury/previewcloud-action@v1.0.0
         with:
@@ -42,5 +35,3 @@ jobs:
           branch: ${{ github.head_ref }}
           commit_sha: ${{ github.sha }}
           repository: ${{ github.repository }}
-          preview_yaml_path: "preview.yaml"
-          action: "create"
