@@ -48,7 +48,32 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Validate Inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.api_key }}" ]; then
+          echo "Error: api_key is required"
+          exit 1
+        fi
+        if [ -z "${{ inputs.pr_number }}" ]; then
+          echo "Error: pr_number is required"
+          exit 1
+        fi
+        if [ -z "${{ inputs.branch }}" ]; then
+          echo "Error: branch is required"
+          exit 1
+        fi
+        if [ -z "${{ inputs.commit_sha }}" ]; then
+          echo "Error: commit_sha is required"
+          exit 1
+        fi
+        if [ -z "${{ inputs.repository }}" ]; then
+          echo "Error: repository is required"
+          exit 1
+        fi
+
     - name: Read preview.yaml
+      if: ${{ inputs.action != 'destroy' }}
       id: read_config
       shell: bash
       run: |
@@ -68,7 +93,7 @@ runs:
       id: create_preview
       shell: bash
       run: |
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ inputs.base_url }}/api/v1/previews" \
+        RESPONSE=$(curl -s --max-time 30 -w "\n%{http_code}" -X POST "${{ inputs.base_url }}/api/v1/previews" \
           -H "Authorization: Bearer ${{ inputs.api_key }}" \
           -H "Content-Type: application/json" \
           -d "{
@@ -87,7 +112,10 @@ runs:
           echo "status=$(echo "$BODY" | jq -r '.preview.status // .status // empty')" >> $GITHUB_OUTPUT
           echo "✅ Preview created/updated successfully"
         else
-          echo "❌ Failed to create preview: $BODY"
+          echo "❌ Failed to create preview"
+          echo "HTTP Status: $HTTP_CODE"
+          echo "API URL: ${{ inputs.base_url }}/api/v1/previews"
+          echo "Response: $BODY"
           exit 1
         fi
 
@@ -99,7 +127,7 @@ runs:
         # Wait a bit for preview to be created
         sleep 2
 
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}" \
+        RESPONSE=$(curl -s --max-time 30 -w "\n%{http_code}" -X GET "${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}" \
           -H "Authorization: Bearer ${{ inputs.api_key }}")
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
@@ -114,13 +142,18 @@ runs:
           echo "services<<EOF" >> $GITHUB_OUTPUT
           echo "$SERVICES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️ Warning: Failed to get preview details"
+          echo "HTTP Status: $HTTP_CODE"
+          echo "API URL: ${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}"
+          echo "Response: $BODY"
         fi
 
     - name: Destroy Preview
       if: ${{ inputs.action == 'destroy' }}
       shell: bash
       run: |
-        RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}" \
+        RESPONSE=$(curl -s --max-time 30 -w "\n%{http_code}" -X DELETE "${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}" \
           -H "Authorization: Bearer ${{ inputs.api_key }}")
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
@@ -129,7 +162,10 @@ runs:
         if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
           echo "✅ Preview destroyed successfully"
         else
-          echo "❌ Failed to destroy preview: $BODY"
+          echo "❌ Failed to destroy preview"
+          echo "HTTP Status: $HTTP_CODE"
+          echo "API URL: ${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}"
+          echo "Response: $BODY"
           exit 1
         fi
 
