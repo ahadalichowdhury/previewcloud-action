@@ -1,16 +1,46 @@
 # PreviewCloud GitHub Action
 
-[![GitHub release](https://img.shields.io/github/release/previewcloud/action.svg)](https://github.com/previewcloud/action/releases)
+Create, update, and destroy fully isolated **preview environments** for your pull requests — automatically.  
+This GitHub Action integrates with the **PreviewCloud** platform to give every PR its own live environment where frontend, backend, and microservices deploy instantly.
 
-A simple GitHub Action to create and manage preview environments for your pull requests.
+Perfect for:
+- Feature testing  
+- QA validation  
+- Stakeholder demos  
+- Automatic ephemeral environments  
+- Multi-service previews
 
-## Usage
+---
+
+## 🚀 Features
+
+- 🔄 **Automatic environment creation** on every PR  
+- 🛠️ **Update previews** when new commits are pushed  
+- ❌ **Destroy environments** when PR is closed or manually triggered  
+- 📄 Uses your own `preview.yaml` configuration  
+- 🌐 Returns deployed URLs for all services  
+- 📦 Supports monorepo + multi-service previews  
+- ⚡ Fast, curl-based lightweight action (no Node/Docker dependency)
+
+---
+
+## 📌 Usage
 
 ```yaml
-- uses: previewcloud/action@v1.0.0
-  with:
-    api_key: ${{ secrets.PREVIEWCLOUD_API_KEY }}
-    pr_number: ${{ github.event.pull_request.number }}
-    branch: ${{ github.head_ref }}
-    commit_sha: ${{ github.sha }}
-    repository: ${{ github.repository }}
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create PreviewCloud environment
+        uses: ahadalichowdhury/previewcloud-action@v1.0.0
+        with:
+          api_key: ${{ secrets.PREVIEWCLOUD_API_KEY }}
+          pr_number: ${{ github.event.pull_request.number }}
+          branch: ${{ github.head_ref }}
+          commit_sha: ${{ github.sha }}
+          repository: ${{ github.repository }}
+          preview_yaml_path: "preview.yaml"
+          action: "create"
