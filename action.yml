@@ -64,7 +64,7 @@ runs:
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Create/Update Preview
-      if: inputs.action == 'create' || inputs.action == 'update'
+      if: ${{ inputs.action == 'create' || inputs.action == 'update' }}
       id: create_preview
       shell: bash
       run: |
@@ -92,7 +92,7 @@ runs:
         fi
 
     - name: Get Preview Details
-      if: inputs.action == 'create' || inputs.action == 'update'
+      if: ${{ inputs.action == 'create' || inputs.action == 'update' }}
       id: get_preview
       shell: bash
       run: |
@@ -109,7 +109,7 @@ runs:
           # Extract first service URL as preview_url
           PREVIEW_URL=$(echo "$BODY" | jq -r '.services[0].url // empty')
           SERVICES=$(echo "$BODY" | jq -c '.services // []')
-          
+
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
           echo "services<<EOF" >> $GITHUB_OUTPUT
           echo "$SERVICES" >> $GITHUB_OUTPUT
@@ -117,7 +117,7 @@ runs:
         fi
 
     - name: Destroy Preview
-      if: inputs.action == 'destroy'
+      if: ${{ inputs.action == 'destroy' }}
       shell: bash
       run: |
         RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}" \
