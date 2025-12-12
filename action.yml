@@ -1,187 +1,84 @@
-name: "PreviewCloud"
-description: "Create and manage preview environments for pull requests"
-author: "PreviewCloud"
+# PreviewCloud GitHub Action
+# Automatically deploy preview environments for pull requests
+
+name: 'PreviewCloud Deploy'
+description: 'Deploy preview environments to PreviewCloud for every pull request'
+author: 'PreviewCloud'
+
+branding:
+  icon: 'cloud'
+  color: 'blue'
 
 inputs:
-  api_key:
-    description: "PreviewCloud API key"
+  api-token:
+    description: 'PreviewCloud API token (from dashboard or GitHub secrets)'
     required: true
-  pr_number:
-    description: "Pull request number"
-    required: true
-  branch:
-    description: "Branch name"
-    required: true
-  commit_sha:
-    description: "Commit SHA"
-    required: true
-  repository:
-    description: "Repository in format owner/repo"
-    required: true
-  preview_yaml_path:
-    description: "Path to preview.yaml file"
+  
+  api-url:
+    description: 'PreviewCloud API URL'
     required: false
-    default: "preview.yaml"
+    default: 'https://api.previewcloud.cloud'
+  
+  config-file:
+    description: 'Path to preview.yaml configuration file'
+    required: false
+    default: 'preview.yaml'
+  
+  working-directory:
+    description: 'Working directory for the action'
+    required: false
+    default: '.'
+  
+  secrets:
+    description: |
+      Secrets to pass to PreviewCloud (multiline format)
+      Example:
+        JWT_SECRET=${{ secrets.JWT_SECRET }}
+        STRIPE_KEY=${{ secrets.STRIPE_KEY }}
+    required: false
+    default: ''
+  
+  pr-number:
+    description: 'Pull request number (auto-detected if not provided)'
+    required: false
+    default: ''
+  
   action:
-    description: "Action to perform: create, update, destroy"
+    description: 'Action to perform: deploy, destroy, or auto (default: auto)'
     required: false
-    default: "create"
-  base_url:
-    description: "PreviewCloud API base URL"
+    default: 'auto'
+  
+  comment-on-pr:
+    description: 'Post a comment on the PR with preview URLs (default: true)'
     required: false
-    default: "https://api.previewcloud.cloud"
+    default: 'true'
+  
+  wait-for-deployment:
+    description: 'Wait for deployment to complete (default: true)'
+    required: false
+    default: 'true'
+  
+  timeout:
+    description: 'Deployment timeout in seconds (default: 600)'
+    required: false
+    default: '600'
 
 outputs:
-  preview_id:
-    description: "Preview ID"
-    value: ${{ steps.set_outputs.outputs.preview_id }}
-  preview_url:
-    description: "Preview URL"
-    value: ${{ steps.set_outputs.outputs.preview_url }}
+  preview-id:
+    description: 'Unique ID of the preview environment'
+  
+  preview-url:
+    description: 'Primary preview URL (web service if available)'
+  
+  preview-urls:
+    description: 'JSON object with all service URLs'
+  
   status:
-    description: "Preview status"
-    value: ${{ steps.set_outputs.outputs.status }}
-  services:
-    description: "JSON array of service URLs"
-    value: ${{ steps.set_outputs.outputs.services }}
+    description: 'Deployment status: success, failed, or destroyed'
+  
+  deployment-time:
+    description: 'Time taken for deployment in seconds'
 
 runs:
-  using: "composite"
-  steps:
-    - name: Validate Inputs
-      shell: bash
-      run: |
-        if [ -z "${{ inputs.api_key }}" ]; then
-          echo "Error: api_key is required"
-          exit 1
-        fi
-        if [ -z "${{ inputs.pr_number }}" ]; then
-          echo "Error: pr_number is required"
-          exit 1
-        fi
-        if [ -z "${{ inputs.branch }}" ]; then
-          echo "Error: branch is required"
-          exit 1
-        fi
-        if [ -z "${{ inputs.commit_sha }}" ]; then
-          echo "Error: commit_sha is required"
-          exit 1
-        fi
-        if [ -z "${{ inputs.repository }}" ]; then
-          echo "Error: repository is required"
-          exit 1
-        fi
-
-    - name: Read preview.yaml
-      if: ${{ inputs.action != 'destroy' }}
-      id: read_config
-      shell: bash
-      run: |
-        if [ ! -f "${{ inputs.preview_yaml_path }}" ]; then
-          echo "Error: preview.yaml not found at ${{ inputs.preview_yaml_path }}"
-          exit 1
-        fi
-
-        # Read and escape preview.yaml for JSON
-        PREVIEW_YAML=$(cat "${{ inputs.preview_yaml_path }}" | jq -Rs .)
-        echo "preview_yaml<<EOF" >> $GITHUB_OUTPUT
-        echo "$PREVIEW_YAML" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-
-    - name: Create/Update Preview
-      if: ${{ inputs.action == 'create' || inputs.action == 'update' }}
-      id: create_preview
-      shell: bash
-      run: |
-        # Create JSON payload file (no line continuations - fixes curl error)
-        cat > /tmp/payload.json << PAYLOADEOF
-        {
-          "pr_number": ${{ inputs.pr_number }},
-          "branch": "${{ inputs.branch }}",
-          "commit_sha": "${{ inputs.commit_sha }}",
-          "repository": "${{ inputs.repository }}",
-          "preview_yaml": ${{ steps.read_config.outputs.preview_yaml }}
-        }
-        PAYLOADEOF
-
-        # Single-line curl command (no backslashes - fixes the error!)
-        RESPONSE=$(curl -s --max-time 30 -w "\n%{http_code}" -X POST "${{ inputs.base_url }}/api/v1/previews" -H "Authorization: Bearer ${{ inputs.api_key }}" -H "Content-Type: application/json" -d @/tmp/payload.json)
-
-        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-        BODY=$(echo "$RESPONSE" | sed '$d')
-
-        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-          echo "preview_id=$(echo "$BODY" | jq -r '.preview.id // empty')" >> $GITHUB_OUTPUT
-          echo "status=$(echo "$BODY" | jq -r '.preview.status // .status // empty')" >> $GITHUB_OUTPUT
-          echo "✅ Preview created/updated successfully"
-        else
-          echo "❌ Failed to create preview"
-          echo "HTTP Status: $HTTP_CODE"
-          echo "API URL: ${{ inputs.base_url }}/api/v1/previews"
-          echo "Response: $BODY"
-          exit 1
-        fi
-
-    - name: Get Preview Details
-      if: ${{ inputs.action == 'create' || inputs.action == 'update' }}
-      id: get_preview
-      shell: bash
-      run: |
-        # Wait a bit for preview to be created
-        sleep 2
-
-        # Single-line curl command (no backslashes)
-        RESPONSE=$(curl -s --max-time 30 -w "\n%{http_code}" -X GET "${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}" -H "Authorization: Bearer ${{ inputs.api_key }}")
-
-        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-        BODY=$(echo "$RESPONSE" | sed '$d')
-
-        if [ "$HTTP_CODE" -eq 200 ]; then
-          # Extract first service URL as preview_url
-          PREVIEW_URL=$(echo "$BODY" | jq -r '.services[0].url // empty')
-          SERVICES=$(echo "$BODY" | jq -c '.services // []')
-
-          echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
-          echo "services<<EOF" >> $GITHUB_OUTPUT
-          echo "$SERVICES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-        else
-          echo "⚠️ Warning: Failed to get preview details"
-          echo "HTTP Status: $HTTP_CODE"
-          echo "API URL: ${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}"
-          echo "Response: $BODY"
-        fi
-
-    - name: Destroy Preview
-      if: ${{ inputs.action == 'destroy' }}
-      shell: bash
-      run: |
-        # Single-line curl command (no backslashes)
-        RESPONSE=$(curl -s --max-time 30 -w "\n%{http_code}" -X DELETE "${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}" -H "Authorization: Bearer ${{ inputs.api_key }}")
-
-        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-        BODY=$(echo "$RESPONSE" | sed '$d')
-
-        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-          echo "✅ Preview destroyed successfully"
-        else
-          echo "❌ Failed to destroy preview"
-          echo "HTTP Status: $HTTP_CODE"
-          echo "API URL: ${{ inputs.base_url }}/api/v1/previews/${{ inputs.pr_number }}"
-          echo "Response: $BODY"
-          exit 1
-        fi
-
-    - name: Set Outputs
-      id: set_outputs
-      shell: bash
-      run: |
-        PREVIEW_ID="${{ steps.create_preview.outputs.preview_id }}"
-        PREVIEW_URL="${{ steps.get_preview.outputs.preview_url }}"
-        STATUS="${{ steps.create_preview.outputs.status }}"
-        SERVICES="${{ steps.get_preview.outputs.services }}"
-
-        echo "preview_id=${PREVIEW_ID:-}" >> $GITHUB_OUTPUT
-        echo "preview_url=${PREVIEW_URL:-}" >> $GITHUB_OUTPUT
-        echo "status=${STATUS:-}" >> $GITHUB_OUTPUT
-        echo "services=${SERVICES:-[]}" >> $GITHUB_OUTPUT
+  using: 'node20'
+  main: 'dist/index.js'
