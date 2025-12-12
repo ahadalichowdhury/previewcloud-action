@@ -1,0 +1,41 @@
+{
+  "name": "previewcloud-action",
+  "version": "1.0.0",
+  "description": "GitHub Action for PreviewCloud - Deploy preview environments",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "test": "jest",
+    "format": "prettier --write 'src/**/*.ts'",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "github-action",
+    "previewcloud",
+    "preview-environments",
+    "deployment",
+    "ci-cd"
+  ],
+  "author": "PreviewCloud",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0",
+    "@actions/exec": "^1.1.1",
+    "axios": "^1.6.2",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
+    "@vercel/ncc": "^0.38.1",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.1.1",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
+  }
+}
