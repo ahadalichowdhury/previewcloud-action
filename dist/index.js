@@ -1,362 +1,5 @@
-/******/ (() => { // webpackBootstrap
+require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
-
-/***/ 8563:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parseConfig = parseConfig;
-const core = __importStar(__nccwpck_require__(7484));
-const fs = __importStar(__nccwpck_require__(9896));
-const yaml = __importStar(__nccwpck_require__(4281));
-const path = __importStar(__nccwpck_require__(6928));
-/**
- * Parse preview.yaml configuration file
- */
-async function parseConfig(configFile, workingDirectory) {
-    const configPath = path.join(workingDirectory, configFile);
-    // Check if file exists
-    if (!fs.existsSync(configPath)) {
-        throw new Error(`Configuration file not found: ${configPath}`);
-    }
-    try {
-        // Read and parse YAML
-        const fileContents = fs.readFileSync(configPath, "utf8");
-        const config = yaml.load(fileContents);
-        // Validate configuration
-        validateConfig(config);
-        // Resolve relative paths
-        resolveServicePaths(config, workingDirectory);
-        return config;
-    }
-    catch (error) {
-        throw new Error(`Failed to parse config file: ${error.message}`);
-    }
-}
-/**
- * Validate configuration structure
- */
-function validateConfig(config) {
-    if (!config) {
-        throw new Error("Configuration is empty");
-    }
-    if (!config.services || typeof config.services !== "object") {
-        throw new Error("services field is required and must be an object");
-    }
-    // Validate each service
-    for (const [name, service] of Object.entries(config.services)) {
-        if (!service.dockerfile) {
-            throw new Error(`Service '${name}' is missing required field: dockerfile`);
-        }
-        // Check if dockerfile exists
-        if (!fs.existsSync(service.dockerfile)) {
-            core.warning(`Dockerfile not found at path: ${service.dockerfile}`);
-        }
-        if (service.port && (service.port < 1 || service.port > 65535)) {
-            throw new Error(`Service '${name}' has invalid port: ${service.port}`);
-        }
-    }
-    // Validate database config if present
-    if (config.database) {
-        const validTypes = ["postgres", "mysql", "mongodb"];
-        if (!validTypes.includes(config.database.type)) {
-            throw new Error(`Invalid database type: ${config.database.type}. Must be one of: ${validTypes.join(", ")}`);
-        }
-    }
-}
-/**
- * Resolve relative paths in service configurations
- */
-function resolveServicePaths(config, workingDirectory) {
-    for (const service of Object.values(config.services)) {
-        // Resolve dockerfile path
-        if (!path.isAbsolute(service.dockerfile)) {
-            service.dockerfile = path.join(workingDirectory, service.dockerfile);
-        }
-        // Resolve context path
-        if (service.context && !path.isAbsolute(service.context)) {
-            service.context = path.join(workingDirectory, service.context);
-        }
-    }
-    // Resolve migrations path if present
-    if (config.database?.migrations &&
-        !path.isAbsolute(config.database.migrations)) {
-        config.database.migrations = path.join(workingDirectory, config.database.migrations);
-    }
-}
-
-
-/***/ }),
-
-/***/ 1165:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.deployPreview = deployPreview;
-exports.checkDeploymentStatus = checkDeploymentStatus;
-const core = __importStar(__nccwpck_require__(7484));
-const axios_1 = __importDefault(__nccwpck_require__(7269));
-/**
- * Deploy preview environment via PreviewCloud API
- */
-async function deployPreview(options) {
-    const { apiUrl, apiToken, prNumber, repoName, repoOwner, branch, commitSha, config, } = options;
-    try {
-        core.info("Calling PreviewCloud API...");
-        // Prepare request payload
-        const payload = {
-            prNumber,
-            repoName,
-            repoOwner,
-            branch,
-            commitSha,
-            services: config.services,
-            database: config.database,
-            env: config.env,
-            password: config.password,
-        };
-        // Call PreviewCloud API
-        const response = await axios_1.default.post(`${apiUrl}/api/previews`, payload, {
-            headers: {
-                Authorization: `Bearer ${apiToken}`,
-                "Content-Type": "application/json",
-            },
-            timeout: 300000, // 5 minutes
-        });
-        if (response.data.success) {
-            const urls = {};
-            // Extract URLs from response
-            if (response.data.data?.urls) {
-                Object.assign(urls, response.data.data.urls);
-            }
-            else if (response.data.data?.services) {
-                // Extract URLs from services
-                for (const service of response.data.data.services) {
-                    urls[service.name] = service.url;
-                }
-            }
-            return {
-                success: true,
-                urls,
-                message: response.data.message,
-            };
-        }
-        else {
-            throw new Error(response.data.error || "Deployment failed");
-        }
-    }
-    catch (error) {
-        if (axios_1.default.isAxiosError(error)) {
-            const errorMessage = error.response?.data?.error?.message || error.message;
-            throw new Error(`API request failed: ${errorMessage}`);
-        }
-        throw error instanceof Error ? error : new Error(String(error));
-    }
-}
-/**
- * Check deployment status
- */
-async function checkDeploymentStatus(apiUrl, apiToken, prNumber) {
-    try {
-        const response = await axios_1.default.get(`${apiUrl}/api/previews/${prNumber}`, {
-            headers: {
-                Authorization: `Bearer ${apiToken}`,
-            },
-        });
-        return response.data.data;
-    }
-    catch (error) {
-        throw new Error(`Failed to check deployment status: ${error.message}`);
-    }
-}
-
-
-/***/ }),
-
-/***/ 137:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__nccwpck_require__(7484));
-const github = __importStar(__nccwpck_require__(3228));
-const config_parser_1 = __nccwpck_require__(8563);
-const deployer_1 = __nccwpck_require__(1165);
-async function run() {
-    try {
-        // Get inputs
-        const apiToken = core.getInput("api-token", { required: true });
-        const apiUrl = core.getInput("api-url", { required: false }) || "http://localhost:3001";
-        const configFile = core.getInput("config-file", { required: false }) || "preview.yaml";
-        const workingDirectory = core.getInput("working-directory", { required: false }) || ".";
-        // Get GitHub context
-        const context = github.context;
-        // Only run on pull requests
-        if (!context.payload.pull_request) {
-            core.info("Not a pull request event, skipping deployment");
-            return;
-        }
-        const prNumber = context.payload.pull_request.number;
-        const repoName = context.repo.repo;
-        const repoOwner = context.repo.owner;
-        const branch = context.payload.pull_request.head.ref;
-        const commitSha = context.payload.pull_request.head.sha;
-        core.info(`=== PreviewCloud Deployment ===`);
-        core.info(`PR Number: ${prNumber}`);
-        core.info(`Repository: ${repoOwner}/${repoName}`);
-        core.info(`Branch: ${branch}`);
-        core.info(`Commit: ${commitSha}`);
-        core.info(`Config File: ${configFile}`);
-        core.info(`API URL: ${apiUrl}`);
-        // Parse preview configuration
-        core.info("Parsing preview configuration...");
-        const config = await (0, config_parser_1.parseConfig)(configFile, workingDirectory);
-        if (!config.services || Object.keys(config.services).length === 0) {
-            throw new Error("No services defined in preview.yaml");
-        }
-        core.info(`Found ${Object.keys(config.services).length} service(s): ${Object.keys(config.services).join(", ")}`);
-        // Deploy preview
-        core.info("Deploying preview environment...");
-        const result = await (0, deployer_1.deployPreview)({
-            apiUrl,
-            apiToken,
-            prNumber,
-            repoName,
-            repoOwner,
-            branch,
-            commitSha,
-            config,
-        });
-        // Set outputs
-        core.setOutput("preview-urls", JSON.stringify(result.urls));
-        core.setOutput("status", "success");
-        // Add comment to PR with preview URLs (optional)
-        if (result.urls && Object.keys(result.urls).length > 0) {
-            core.info("\n=== Preview URLs ===");
-            for (const [service, url] of Object.entries(result.urls)) {
-                core.info(`${service}: ${url}`);
-            }
-        }
-        core.info("\n✅ Preview deployment successful!");
-    }
-    catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        core.setFailed(`Preview deployment failed: ${errorMessage}`);
-        core.setOutput("status", "failed");
-    }
-}
-// Run the action
-run();
-
-
-/***/ }),
 
 /***/ 4914:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
@@ -8421,6 +8064,871 @@ CombinedStream.prototype._emitError = function(err) {
 
 /***/ }),
 
+/***/ 6110:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+/* eslint-env browser */
+
+/**
+ * This is the web browser implementation of `debug()`.
+ */
+
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.storage = localstorage();
+exports.destroy = (() => {
+	let warned = false;
+
+	return () => {
+		if (!warned) {
+			warned = true;
+			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+		}
+	};
+})();
+
+/**
+ * Colors.
+ */
+
+exports.colors = [
+	'#0000CC',
+	'#0000FF',
+	'#0033CC',
+	'#0033FF',
+	'#0066CC',
+	'#0066FF',
+	'#0099CC',
+	'#0099FF',
+	'#00CC00',
+	'#00CC33',
+	'#00CC66',
+	'#00CC99',
+	'#00CCCC',
+	'#00CCFF',
+	'#3300CC',
+	'#3300FF',
+	'#3333CC',
+	'#3333FF',
+	'#3366CC',
+	'#3366FF',
+	'#3399CC',
+	'#3399FF',
+	'#33CC00',
+	'#33CC33',
+	'#33CC66',
+	'#33CC99',
+	'#33CCCC',
+	'#33CCFF',
+	'#6600CC',
+	'#6600FF',
+	'#6633CC',
+	'#6633FF',
+	'#66CC00',
+	'#66CC33',
+	'#9900CC',
+	'#9900FF',
+	'#9933CC',
+	'#9933FF',
+	'#99CC00',
+	'#99CC33',
+	'#CC0000',
+	'#CC0033',
+	'#CC0066',
+	'#CC0099',
+	'#CC00CC',
+	'#CC00FF',
+	'#CC3300',
+	'#CC3333',
+	'#CC3366',
+	'#CC3399',
+	'#CC33CC',
+	'#CC33FF',
+	'#CC6600',
+	'#CC6633',
+	'#CC9900',
+	'#CC9933',
+	'#CCCC00',
+	'#CCCC33',
+	'#FF0000',
+	'#FF0033',
+	'#FF0066',
+	'#FF0099',
+	'#FF00CC',
+	'#FF00FF',
+	'#FF3300',
+	'#FF3333',
+	'#FF3366',
+	'#FF3399',
+	'#FF33CC',
+	'#FF33FF',
+	'#FF6600',
+	'#FF6633',
+	'#FF9900',
+	'#FF9933',
+	'#FFCC00',
+	'#FFCC33'
+];
+
+/**
+ * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+ * and the Firebug extension (any Firefox version) are known
+ * to support "%c" CSS customizations.
+ *
+ * TODO: add a `localStorage` variable to explicitly enable/disable colors
+ */
+
+// eslint-disable-next-line complexity
+function useColors() {
+	// NB: In an Electron preload script, document will be defined but not fully
+	// initialized. Since we know we're in Chrome, we'll just detect this case
+	// explicitly
+	if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
+		return true;
+	}
+
+	// Internet Explorer and Edge do not support colors.
+	if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
+		return false;
+	}
+
+	let m;
+
+	// Is webkit? http://stackoverflow.com/a/16459606/376773
+	// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+	// eslint-disable-next-line no-return-assign
+	return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
+		// Is firebug? http://stackoverflow.com/a/398120/376773
+		(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
+		// Is firefox >= v31?
+		// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+		(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
+		// Double check webkit in userAgent just in case we are in a worker
+		(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
+}
+
+/**
+ * Colorize log arguments if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs(args) {
+	args[0] = (this.useColors ? '%c' : '') +
+		this.namespace +
+		(this.useColors ? ' %c' : ' ') +
+		args[0] +
+		(this.useColors ? '%c ' : ' ') +
+		'+' + module.exports.humanize(this.diff);
+
+	if (!this.useColors) {
+		return;
+	}
+
+	const c = 'color: ' + this.color;
+	args.splice(1, 0, c, 'color: inherit');
+
+	// The final "%c" is somewhat tricky, because there could be other
+	// arguments passed either before or after the %c, so we need to
+	// figure out the correct index to insert the CSS into
+	let index = 0;
+	let lastC = 0;
+	args[0].replace(/%[a-zA-Z%]/g, match => {
+		if (match === '%%') {
+			return;
+		}
+		index++;
+		if (match === '%c') {
+			// We only are interested in the *last* %c
+			// (the user may have provided their own)
+			lastC = index;
+		}
+	});
+
+	args.splice(lastC, 0, c);
+}
+
+/**
+ * Invokes `console.debug()` when available.
+ * No-op when `console.debug` is not a "function".
+ * If `console.debug` is not available, falls back
+ * to `console.log`.
+ *
+ * @api public
+ */
+exports.log = console.debug || console.log || (() => {});
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+function save(namespaces) {
+	try {
+		if (namespaces) {
+			exports.storage.setItem('debug', namespaces);
+		} else {
+			exports.storage.removeItem('debug');
+		}
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+function load() {
+	let r;
+	try {
+		r = exports.storage.getItem('debug') || exports.storage.getItem('DEBUG') ;
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+
+	// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+	if (!r && typeof process !== 'undefined' && 'env' in process) {
+		r = process.env.DEBUG;
+	}
+
+	return r;
+}
+
+/**
+ * Localstorage attempts to return the localstorage.
+ *
+ * This is necessary because safari throws
+ * when a user disables cookies/localstorage
+ * and you attempt to access it.
+ *
+ * @return {LocalStorage}
+ * @api private
+ */
+
+function localstorage() {
+	try {
+		// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+		// The Browser also has localStorage in the global context.
+		return localStorage;
+	} catch (error) {
+		// Swallow
+		// XXX (@Qix-) should we be logging these?
+	}
+}
+
+module.exports = __nccwpck_require__(897)(exports);
+
+const {formatters} = module.exports;
+
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */
+
+formatters.j = function (v) {
+	try {
+		return JSON.stringify(v);
+	} catch (error) {
+		return '[UnexpectedJSONParseError]: ' + error.message;
+	}
+};
+
+
+/***/ }),
+
+/***/ 897:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+
+/**
+ * This is the common logic for both the Node.js and web browser
+ * implementations of `debug()`.
+ */
+
+function setup(env) {
+	createDebug.debug = createDebug;
+	createDebug.default = createDebug;
+	createDebug.coerce = coerce;
+	createDebug.disable = disable;
+	createDebug.enable = enable;
+	createDebug.enabled = enabled;
+	createDebug.humanize = __nccwpck_require__(744);
+	createDebug.destroy = destroy;
+
+	Object.keys(env).forEach(key => {
+		createDebug[key] = env[key];
+	});
+
+	/**
+	* The currently active debug mode names, and names to skip.
+	*/
+
+	createDebug.names = [];
+	createDebug.skips = [];
+
+	/**
+	* Map of special "%n" handling functions, for the debug "format" argument.
+	*
+	* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+	*/
+	createDebug.formatters = {};
+
+	/**
+	* Selects a color for a debug namespace
+	* @param {String} namespace The namespace string for the debug instance to be colored
+	* @return {Number|String} An ANSI color code for the given namespace
+	* @api private
+	*/
+	function selectColor(namespace) {
+		let hash = 0;
+
+		for (let i = 0; i < namespace.length; i++) {
+			hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+			hash |= 0; // Convert to 32bit integer
+		}
+
+		return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+	}
+	createDebug.selectColor = selectColor;
+
+	/**
+	* Create a debugger with the given `namespace`.
+	*
+	* @param {String} namespace
+	* @return {Function}
+	* @api public
+	*/
+	function createDebug(namespace) {
+		let prevTime;
+		let enableOverride = null;
+		let namespacesCache;
+		let enabledCache;
+
+		function debug(...args) {
+			// Disabled?
+			if (!debug.enabled) {
+				return;
+			}
+
+			const self = debug;
+
+			// Set `diff` timestamp
+			const curr = Number(new Date());
+			const ms = curr - (prevTime || curr);
+			self.diff = ms;
+			self.prev = prevTime;
+			self.curr = curr;
+			prevTime = curr;
+
+			args[0] = createDebug.coerce(args[0]);
+
+			if (typeof args[0] !== 'string') {
+				// Anything else let's inspect with %O
+				args.unshift('%O');
+			}
+
+			// Apply any `formatters` transformations
+			let index = 0;
+			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+				// If we encounter an escaped % then don't increase the array index
+				if (match === '%%') {
+					return '%';
+				}
+				index++;
+				const formatter = createDebug.formatters[format];
+				if (typeof formatter === 'function') {
+					const val = args[index];
+					match = formatter.call(self, val);
+
+					// Now we need to remove `args[index]` since it's inlined in the `format`
+					args.splice(index, 1);
+					index--;
+				}
+				return match;
+			});
+
+			// Apply env-specific formatting (colors, etc.)
+			createDebug.formatArgs.call(self, args);
+
+			const logFn = self.log || createDebug.log;
+			logFn.apply(self, args);
+		}
+
+		debug.namespace = namespace;
+		debug.useColors = createDebug.useColors();
+		debug.color = createDebug.selectColor(namespace);
+		debug.extend = extend;
+		debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
+
+		Object.defineProperty(debug, 'enabled', {
+			enumerable: true,
+			configurable: false,
+			get: () => {
+				if (enableOverride !== null) {
+					return enableOverride;
+				}
+				if (namespacesCache !== createDebug.namespaces) {
+					namespacesCache = createDebug.namespaces;
+					enabledCache = createDebug.enabled(namespace);
+				}
+
+				return enabledCache;
+			},
+			set: v => {
+				enableOverride = v;
+			}
+		});
+
+		// Env-specific initialization logic for debug instances
+		if (typeof createDebug.init === 'function') {
+			createDebug.init(debug);
+		}
+
+		return debug;
+	}
+
+	function extend(namespace, delimiter) {
+		const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+		newDebug.log = this.log;
+		return newDebug;
+	}
+
+	/**
+	* Enables a debug mode by namespaces. This can include modes
+	* separated by a colon and wildcards.
+	*
+	* @param {String} namespaces
+	* @api public
+	*/
+	function enable(namespaces) {
+		createDebug.save(namespaces);
+		createDebug.namespaces = namespaces;
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		const split = (typeof namespaces === 'string' ? namespaces : '')
+			.trim()
+			.replace(/\s+/g, ',')
+			.split(',')
+			.filter(Boolean);
+
+		for (const ns of split) {
+			if (ns[0] === '-') {
+				createDebug.skips.push(ns.slice(1));
+			} else {
+				createDebug.names.push(ns);
+			}
+		}
+	}
+
+	/**
+	 * Checks if the given string matches a namespace template, honoring
+	 * asterisks as wildcards.
+	 *
+	 * @param {String} search
+	 * @param {String} template
+	 * @return {Boolean}
+	 */
+	function matchesTemplate(search, template) {
+		let searchIndex = 0;
+		let templateIndex = 0;
+		let starIndex = -1;
+		let matchIndex = 0;
+
+		while (searchIndex < search.length) {
+			if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === '*')) {
+				// Match character or proceed with wildcard
+				if (template[templateIndex] === '*') {
+					starIndex = templateIndex;
+					matchIndex = searchIndex;
+					templateIndex++; // Skip the '*'
+				} else {
+					searchIndex++;
+					templateIndex++;
+				}
+			} else if (starIndex !== -1) { // eslint-disable-line no-negated-condition
+				// Backtrack to the last '*' and try to match more characters
+				templateIndex = starIndex + 1;
+				matchIndex++;
+				searchIndex = matchIndex;
+			} else {
+				return false; // No match
+			}
+		}
+
+		// Handle trailing '*' in template
+		while (templateIndex < template.length && template[templateIndex] === '*') {
+			templateIndex++;
+		}
+
+		return templateIndex === template.length;
+	}
+
+	/**
+	* Disable debug output.
+	*
+	* @return {String} namespaces
+	* @api public
+	*/
+	function disable() {
+		const namespaces = [
+			...createDebug.names,
+			...createDebug.skips.map(namespace => '-' + namespace)
+		].join(',');
+		createDebug.enable('');
+		return namespaces;
+	}
+
+	/**
+	* Returns true if the given mode name is enabled, false otherwise.
+	*
+	* @param {String} name
+	* @return {Boolean}
+	* @api public
+	*/
+	function enabled(name) {
+		for (const skip of createDebug.skips) {
+			if (matchesTemplate(name, skip)) {
+				return false;
+			}
+		}
+
+		for (const ns of createDebug.names) {
+			if (matchesTemplate(name, ns)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	* Coerce `val`.
+	*
+	* @param {Mixed} val
+	* @return {Mixed}
+	* @api private
+	*/
+	function coerce(val) {
+		if (val instanceof Error) {
+			return val.stack || val.message;
+		}
+		return val;
+	}
+
+	/**
+	* XXX DO NOT USE. This is a temporary stub function.
+	* XXX It WILL be removed in the next major release.
+	*/
+	function destroy() {
+		console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
+	}
+
+	createDebug.enable(createDebug.load());
+
+	return createDebug;
+}
+
+module.exports = setup;
+
+
+/***/ }),
+
+/***/ 2830:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/**
+ * Detect Electron renderer / nwjs process, which is node, but we should
+ * treat as a browser.
+ */
+
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	module.exports = __nccwpck_require__(6110);
+} else {
+	module.exports = __nccwpck_require__(5108);
+}
+
+
+/***/ }),
+
+/***/ 5108:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+/**
+ * Module dependencies.
+ */
+
+const tty = __nccwpck_require__(2018);
+const util = __nccwpck_require__(9023);
+
+/**
+ * This is the Node.js implementation of `debug()`.
+ */
+
+exports.init = init;
+exports.log = log;
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.destroy = util.deprecate(
+	() => {},
+	'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
+);
+
+/**
+ * Colors.
+ */
+
+exports.colors = [6, 2, 3, 4, 5, 1];
+
+try {
+	// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
+	// eslint-disable-next-line import/no-extraneous-dependencies
+	const supportsColor = __nccwpck_require__(1450);
+
+	if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
+		exports.colors = [
+			20,
+			21,
+			26,
+			27,
+			32,
+			33,
+			38,
+			39,
+			40,
+			41,
+			42,
+			43,
+			44,
+			45,
+			56,
+			57,
+			62,
+			63,
+			68,
+			69,
+			74,
+			75,
+			76,
+			77,
+			78,
+			79,
+			80,
+			81,
+			92,
+			93,
+			98,
+			99,
+			112,
+			113,
+			128,
+			129,
+			134,
+			135,
+			148,
+			149,
+			160,
+			161,
+			162,
+			163,
+			164,
+			165,
+			166,
+			167,
+			168,
+			169,
+			170,
+			171,
+			172,
+			173,
+			178,
+			179,
+			184,
+			185,
+			196,
+			197,
+			198,
+			199,
+			200,
+			201,
+			202,
+			203,
+			204,
+			205,
+			206,
+			207,
+			208,
+			209,
+			214,
+			215,
+			220,
+			221
+		];
+	}
+} catch (error) {
+	// Swallow - we only care if `supports-color` is available; it doesn't have to be.
+}
+
+/**
+ * Build up the default `inspectOpts` object from the environment variables.
+ *
+ *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
+ */
+
+exports.inspectOpts = Object.keys(process.env).filter(key => {
+	return /^debug_/i.test(key);
+}).reduce((obj, key) => {
+	// Camel-case
+	const prop = key
+		.substring(6)
+		.toLowerCase()
+		.replace(/_([a-z])/g, (_, k) => {
+			return k.toUpperCase();
+		});
+
+	// Coerce string value into JS value
+	let val = process.env[key];
+	if (/^(yes|on|true|enabled)$/i.test(val)) {
+		val = true;
+	} else if (/^(no|off|false|disabled)$/i.test(val)) {
+		val = false;
+	} else if (val === 'null') {
+		val = null;
+	} else {
+		val = Number(val);
+	}
+
+	obj[prop] = val;
+	return obj;
+}, {});
+
+/**
+ * Is stdout a TTY? Colored output is enabled when `true`.
+ */
+
+function useColors() {
+	return 'colors' in exports.inspectOpts ?
+		Boolean(exports.inspectOpts.colors) :
+		tty.isatty(process.stderr.fd);
+}
+
+/**
+ * Adds ANSI color escape codes if enabled.
+ *
+ * @api public
+ */
+
+function formatArgs(args) {
+	const {namespace: name, useColors} = this;
+
+	if (useColors) {
+		const c = this.color;
+		const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
+		const prefix = `  ${colorCode};1m${name} \u001B[0m`;
+
+		args[0] = prefix + args[0].split('\n').join('\n' + prefix);
+		args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
+	} else {
+		args[0] = getDate() + name + ' ' + args[0];
+	}
+}
+
+function getDate() {
+	if (exports.inspectOpts.hideDate) {
+		return '';
+	}
+	return new Date().toISOString() + ' ';
+}
+
+/**
+ * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
+ */
+
+function log(...args) {
+	return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
+}
+
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */
+function save(namespaces) {
+	if (namespaces) {
+		process.env.DEBUG = namespaces;
+	} else {
+		// If you set a process.env field to null or undefined, it gets cast to the
+		// string 'null' or 'undefined'. Just delete instead.
+		delete process.env.DEBUG;
+	}
+}
+
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */
+
+function load() {
+	return process.env.DEBUG;
+}
+
+/**
+ * Init logic for `debug` instances.
+ *
+ * Create a new `inspectOpts` object in case `useColors` is set
+ * differently for a particular `debug` instance.
+ */
+
+function init(debug) {
+	debug.inspectOpts = {};
+
+	const keys = Object.keys(exports.inspectOpts);
+	for (let i = 0; i < keys.length; i++) {
+		debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
+	}
+}
+
+module.exports = __nccwpck_require__(897)(exports);
+
+const {formatters} = module.exports;
+
+/**
+ * Map %o to `util.inspect()`, all on a single line.
+ */
+
+formatters.o = function (v) {
+	this.inspectOpts.colors = this.useColors;
+	return util.inspect(v, this.inspectOpts)
+		.split('\n')
+		.map(str => str.trim())
+		.join(' ');
+};
+
+/**
+ * Map %O to `util.inspect()`, allowing multiple lines if needed.
+ */
+
+formatters.O = function (v) {
+	this.inspectOpts.colors = this.useColors;
+	return util.inspect(v, this.inspectOpts);
+};
+
+
+/***/ }),
+
 /***/ 2710:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -8771,7 +9279,7 @@ module.exports = function () {
   if (!debug) {
     try {
       /* eslint global-require: off */
-      debug = __nccwpck_require__(8422)("follow-redirects");
+      debug = __nccwpck_require__(2830)("follow-redirects");
     }
     catch (error) { /* */ }
     if (typeof debug !== "function") {
@@ -10580,6 +11088,22 @@ if ($gOPD) {
 }
 
 module.exports = $gOPD;
+
+
+/***/ }),
+
+/***/ 3813:
+/***/ ((module) => {
+
+"use strict";
+
+
+module.exports = (flag, argv = process.argv) => {
+	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+	const position = argv.indexOf(prefix + flag);
+	const terminatorPosition = argv.indexOf('--');
+	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+};
 
 
 /***/ }),
@@ -15125,6 +15649,175 @@ function populateMaps (extensions, types) {
 
 /***/ }),
 
+/***/ 744:
+/***/ ((module) => {
+
+/**
+ * Helpers.
+ */
+
+var s = 1000;
+var m = s * 60;
+var h = m * 60;
+var d = h * 24;
+var w = d * 7;
+var y = d * 365.25;
+
+/**
+ * Parse or format the given `val`.
+ *
+ * Options:
+ *
+ *  - `long` verbose formatting [false]
+ *
+ * @param {String|Number} val
+ * @param {Object} [options]
+ * @throws {Error} throw an error if val is not a non-empty string or a number
+ * @return {String|Number}
+ * @api public
+ */
+
+module.exports = function (val, options) {
+  options = options || {};
+  var type = typeof val;
+  if (type === 'string' && val.length > 0) {
+    return parse(val);
+  } else if (type === 'number' && isFinite(val)) {
+    return options.long ? fmtLong(val) : fmtShort(val);
+  }
+  throw new Error(
+    'val is not a non-empty string or a valid number. val=' +
+      JSON.stringify(val)
+  );
+};
+
+/**
+ * Parse the given `str` and return milliseconds.
+ *
+ * @param {String} str
+ * @return {Number}
+ * @api private
+ */
+
+function parse(str) {
+  str = String(str);
+  if (str.length > 100) {
+    return;
+  }
+  var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
+    str
+  );
+  if (!match) {
+    return;
+  }
+  var n = parseFloat(match[1]);
+  var type = (match[2] || 'ms').toLowerCase();
+  switch (type) {
+    case 'years':
+    case 'year':
+    case 'yrs':
+    case 'yr':
+    case 'y':
+      return n * y;
+    case 'weeks':
+    case 'week':
+    case 'w':
+      return n * w;
+    case 'days':
+    case 'day':
+    case 'd':
+      return n * d;
+    case 'hours':
+    case 'hour':
+    case 'hrs':
+    case 'hr':
+    case 'h':
+      return n * h;
+    case 'minutes':
+    case 'minute':
+    case 'mins':
+    case 'min':
+    case 'm':
+      return n * m;
+    case 'seconds':
+    case 'second':
+    case 'secs':
+    case 'sec':
+    case 's':
+      return n * s;
+    case 'milliseconds':
+    case 'millisecond':
+    case 'msecs':
+    case 'msec':
+    case 'ms':
+      return n;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Short format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function fmtShort(ms) {
+  var msAbs = Math.abs(ms);
+  if (msAbs >= d) {
+    return Math.round(ms / d) + 'd';
+  }
+  if (msAbs >= h) {
+    return Math.round(ms / h) + 'h';
+  }
+  if (msAbs >= m) {
+    return Math.round(ms / m) + 'm';
+  }
+  if (msAbs >= s) {
+    return Math.round(ms / s) + 's';
+  }
+  return ms + 'ms';
+}
+
+/**
+ * Long format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function fmtLong(ms) {
+  var msAbs = Math.abs(ms);
+  if (msAbs >= d) {
+    return plural(ms, msAbs, d, 'day');
+  }
+  if (msAbs >= h) {
+    return plural(ms, msAbs, h, 'hour');
+  }
+  if (msAbs >= m) {
+    return plural(ms, msAbs, m, 'minute');
+  }
+  if (msAbs >= s) {
+    return plural(ms, msAbs, s, 'second');
+  }
+  return ms + ' ms';
+}
+
+/**
+ * Pluralization helper.
+ */
+
+function plural(ms, msAbs, n, name) {
+  var isPlural = msAbs >= n * 1.5;
+  return Math.round(ms / n) + ' ' + name + (isPlural ? 's' : '');
+}
+
+
+/***/ }),
+
 /***/ 5560:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -15286,6 +15979,149 @@ function getEnv(key) {
 }
 
 exports.getProxyForUrl = getProxyForUrl;
+
+
+/***/ }),
+
+/***/ 1450:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+const os = __nccwpck_require__(857);
+const tty = __nccwpck_require__(2018);
+const hasFlag = __nccwpck_require__(3813);
+
+const {env} = process;
+
+let forceColor;
+if (hasFlag('no-color') ||
+	hasFlag('no-colors') ||
+	hasFlag('color=false') ||
+	hasFlag('color=never')) {
+	forceColor = 0;
+} else if (hasFlag('color') ||
+	hasFlag('colors') ||
+	hasFlag('color=true') ||
+	hasFlag('color=always')) {
+	forceColor = 1;
+}
+
+if ('FORCE_COLOR' in env) {
+	if (env.FORCE_COLOR === 'true') {
+		forceColor = 1;
+	} else if (env.FORCE_COLOR === 'false') {
+		forceColor = 0;
+	} else {
+		forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
+	}
+}
+
+function translateLevel(level) {
+	if (level === 0) {
+		return false;
+	}
+
+	return {
+		level,
+		hasBasic: true,
+		has256: level >= 2,
+		has16m: level >= 3
+	};
+}
+
+function supportsColor(haveStream, streamIsTTY) {
+	if (forceColor === 0) {
+		return 0;
+	}
+
+	if (hasFlag('color=16m') ||
+		hasFlag('color=full') ||
+		hasFlag('color=truecolor')) {
+		return 3;
+	}
+
+	if (hasFlag('color=256')) {
+		return 2;
+	}
+
+	if (haveStream && !streamIsTTY && forceColor === undefined) {
+		return 0;
+	}
+
+	const min = forceColor || 0;
+
+	if (env.TERM === 'dumb') {
+		return min;
+	}
+
+	if (process.platform === 'win32') {
+		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+		const osRelease = os.release().split('.');
+		if (
+			Number(osRelease[0]) >= 10 &&
+			Number(osRelease[2]) >= 10586
+		) {
+			return Number(osRelease[2]) >= 14931 ? 3 : 2;
+		}
+
+		return 1;
+	}
+
+	if ('CI' in env) {
+		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'GITHUB_ACTIONS', 'BUILDKITE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
+			return 1;
+		}
+
+		return min;
+	}
+
+	if ('TEAMCITY_VERSION' in env) {
+		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+	}
+
+	if (env.COLORTERM === 'truecolor') {
+		return 3;
+	}
+
+	if ('TERM_PROGRAM' in env) {
+		const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+
+		switch (env.TERM_PROGRAM) {
+			case 'iTerm.app':
+				return version >= 3 ? 3 : 2;
+			case 'Apple_Terminal':
+				return 2;
+			// No default
+		}
+	}
+
+	if (/-256(color)?$/i.test(env.TERM)) {
+		return 2;
+	}
+
+	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
+		return 1;
+	}
+
+	if ('COLORTERM' in env) {
+		return 1;
+	}
+
+	return min;
+}
+
+function getSupportLevel(stream) {
+	const level = supportsColor(stream, stream && stream.isTTY);
+	return translateLevel(level);
+}
+
+module.exports = {
+	supportsColor: getSupportLevel,
+	stdout: translateLevel(supportsColor(true, tty.isatty(1))),
+	stderr: translateLevel(supportsColor(true, tty.isatty(2)))
+};
 
 
 /***/ }),
@@ -37804,10 +38640,255 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 8422:
-/***/ ((module) => {
+/***/ 9407:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
-module.exports = eval("require")("debug");
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__nccwpck_require__(7484));
+const github = __importStar(__nccwpck_require__(3228));
+const axios_1 = __importDefault(__nccwpck_require__(7269));
+const fs = __importStar(__nccwpck_require__(9896));
+const yaml = __importStar(__nccwpck_require__(4281));
+const path = __importStar(__nccwpck_require__(6928));
+async function run() {
+    try {
+        // Get inputs
+        const apiToken = core.getInput("api-token", { required: true });
+        const apiUrl = core.getInput("api-url") || "https://api.previewcloud.cloud";
+        const configFile = core.getInput("config-file") || "preview.yaml";
+        const workingDirectory = core.getInput("working-directory") || ".";
+        const secretsInput = core.getInput("secrets") || "";
+        const prNumberInput = core.getInput("pr-number");
+        const action = core.getInput("action") || "auto";
+        const commentOnPR = core.getInput("comment-on-pr") === "true";
+        const waitForDeployment = core.getInput("wait-for-deployment") === "true";
+        const timeout = parseInt(core.getInput("timeout") || "600");
+        // Get context
+        const context = github.context;
+        const octokit = github.getOctokit(process.env.GITHUB_TOKEN || "");
+        // Determine PR number
+        const prNumber = prNumberInput || context.payload.pull_request?.number?.toString();
+        if (!prNumber) {
+            core.setFailed("Could not determine PR number. Make sure this action runs on pull_request events.");
+            return;
+        }
+        // Determine action based on event
+        let actionToPerform = action;
+        if (action === "auto") {
+            if (context.payload.action === "closed") {
+                actionToPerform = "destroy";
+            }
+            else if (["opened", "synchronize", "reopened"].includes(context.payload.action || "")) {
+                actionToPerform = "deploy";
+            }
+        }
+        core.info(`🚀 PreviewCloud Action: ${actionToPerform} for PR #${prNumber}`);
+        // Handle destroy action
+        if (actionToPerform === "destroy") {
+            await destroyPreview(apiUrl, apiToken, prNumber, context);
+            core.setOutput("status", "destroyed");
+            core.info("✅ Preview environment destroyed");
+            return;
+        }
+        // Load preview.yaml
+        const configPath = path.join(workingDirectory, configFile);
+        if (!fs.existsSync(configPath)) {
+            core.setFailed(`Config file not found: ${configPath}`);
+            return;
+        }
+        const configContent = fs.readFileSync(configPath, "utf8");
+        const config = yaml.load(configContent);
+        core.info(`📄 Loaded config from ${configFile}`);
+        // Parse secrets
+        const secrets = {};
+        if (secretsInput) {
+            const secretLines = secretsInput.split("\n").filter((line) => line.trim());
+            for (const line of secretLines) {
+                const [key, value] = line.split("=");
+                if (key && value) {
+                    secrets[key.trim()] = value.trim();
+                }
+            }
+        }
+        // Build deployment payload
+        const payload = {
+            prNumber: parseInt(prNumber),
+            repoName: context.repo.repo,
+            repoOwner: context.repo.owner,
+            branch: context.payload.pull_request?.head?.ref || "unknown",
+            commitSha: context.sha,
+            config,
+            secrets,
+            metadata: {
+                actor: context.actor,
+                eventName: context.eventName,
+                action: context.payload.action,
+            },
+        };
+        core.info("🔨 Deploying preview environment...");
+        // Deploy preview
+        const startTime = Date.now();
+        const response = await deployPreview(apiUrl, apiToken, payload, waitForDeployment, timeout);
+        const deploymentTime = Math.floor((Date.now() - startTime) / 1000);
+        // Set outputs
+        core.setOutput("preview-id", response.data.previewId);
+        core.setOutput("preview-url", getPrimaryUrl(response.data.urls));
+        core.setOutput("preview-urls", JSON.stringify(response.data.urls));
+        core.setOutput("status", response.data.status);
+        core.setOutput("deployment-time", deploymentTime.toString());
+        core.info("✅ Preview environment deployed successfully!");
+        core.info(`⏱️  Deployment time: ${deploymentTime}s`);
+        // Log URLs
+        core.info("🌐 Preview URLs:");
+        for (const [service, url] of Object.entries(response.data.urls)) {
+            core.info(`   ${service}: ${url}`);
+        }
+        // Comment on PR
+        if (commentOnPR && process.env.GITHUB_TOKEN) {
+            await commentOnPullRequest(octokit, context, prNumber, response.data.urls, response.data.previewId, deploymentTime);
+        }
+    }
+    catch (error) {
+        core.setFailed(`Action failed: ${error.message}`);
+        core.error(error.stack || error.toString());
+    }
+}
+async function deployPreview(apiUrl, apiToken, payload, wait, timeout) {
+    const response = await axios_1.default.post(`${apiUrl}/api/previews`, payload, {
+        headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+        },
+        timeout: timeout * 1000,
+    });
+    if (!response.data.success) {
+        throw new Error(response.data.message || "Deployment failed");
+    }
+    // If wait is enabled, poll for completion
+    if (wait) {
+        const previewId = response.data.data.previewId;
+        return await waitForDeploymentComplete(apiUrl, apiToken, previewId, timeout);
+    }
+    return response.data;
+}
+async function waitForDeploymentComplete(apiUrl, apiToken, previewId, timeout) {
+    const startTime = Date.now();
+    const pollInterval = 5000; // 5 seconds
+    core.info("⏳ Waiting for deployment to complete...");
+    while (Date.now() - startTime < timeout * 1000) {
+        const response = await axios_1.default.get(`${apiUrl}/api/previews/${previewId}/status`, {
+            headers: {
+                Authorization: `Bearer ${apiToken}`,
+            },
+        });
+        const status = response.data.data.status;
+        core.info(`   Status: ${status}`);
+        if (status === "running") {
+            return response.data;
+        }
+        else if (status === "failed") {
+            throw new Error("Deployment failed");
+        }
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+    throw new Error("Deployment timeout");
+}
+async function destroyPreview(apiUrl, apiToken, prNumber, context) {
+    core.info(`🗑️  Destroying preview for PR #${prNumber}...`);
+    await axios_1.default.delete(`${apiUrl}/api/previews/${context.repo.owner}/${context.repo.repo}/${prNumber}`, {
+        headers: {
+            Authorization: `Bearer ${apiToken}`,
+        },
+    });
+}
+async function commentOnPullRequest(octokit, context, prNumber, urls, previewId, deploymentTime) {
+    const urlList = Object.entries(urls)
+        .map(([service, url]) => `- **${service}**: ${url}`)
+        .join("\n");
+    const comment = `
+## 🚀 PreviewCloud - Preview Environment Ready!
+
+**PR #${prNumber}** - \`${context.payload.pull_request?.head?.ref || "unknown"}\`
+
+### 🌐 Live Preview URLs:
+${urlList}
+
+### 📊 Deployment Info:
+- **Status**: ✅ Running
+- **Preview ID**: \`${previewId}\`
+- **Build Time**: ${deploymentTime}s
+- **Commit**: \`${context.sha.substring(0, 7)}\`
+
+---
+
+💡 **This preview will:**
+- ✅ Auto-update on new commits
+- 🗑️ Auto-destroy when PR is closed/merged
+
+<sub>Powered by [PreviewCloud](https://previewcloud.cloud)</sub>
+`;
+    try {
+        await octokit.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: parseInt(prNumber),
+            body: comment,
+        });
+        core.info("💬 Comment posted on PR");
+    }
+    catch (error) {
+        core.warning(`Failed to post comment: ${error.message}`);
+    }
+}
+function getPrimaryUrl(urls) {
+    // Prioritize: web > frontend > api > first available
+    return (urls.web ||
+        urls.frontend ||
+        urls.app ||
+        urls.api ||
+        Object.values(urls)[0] ||
+        "");
+}
+// Run the action
+run();
 
 
 /***/ }),
@@ -38017,6 +39098,14 @@ module.exports = require("timers");
 
 "use strict";
 module.exports = require("tls");
+
+/***/ }),
+
+/***/ 2018:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("tty");
 
 /***/ }),
 
@@ -44985,8 +46074,9 @@ module.exports = /*#__PURE__*/JSON.parse('{"application/1d-interleaved-parityfec
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(137);
+/******/ 	var __webpack_exports__ = __nccwpck_require__(9407);
 /******/ 	module.exports = __webpack_exports__;
 /******/ 	
 /******/ })()
 ;
+//# sourceMappingURL=index.js.map
