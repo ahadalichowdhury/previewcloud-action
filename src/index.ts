@@ -38,15 +38,46 @@ async function run(): Promise<void> {
 
     // Get context
     const context = github.context;
-    const octokit = github.getOctokit(process.env.GITHUB_TOKEN || "");
+    // Only create Octokit if GITHUB_TOKEN is available (needed for PR comments)
+    const githubToken = process.env.GITHUB_TOKEN;
+    const octokit = githubToken ? github.getOctokit(githubToken) : null;
 
-    // Determine PR number
-    const prNumber =
-      prNumberInput || context.payload.pull_request?.number?.toString();
+    // Determine preview type and identifier
+    let previewType: "pull_request" | "branch";
+    let previewIdentifier: string;
+    let prNumber: number | undefined;
+    let branchName: string;
 
-    if (!prNumber) {
+    if (context.eventName === "pull_request") {
+      // Pull request event
+      previewType = "pull_request";
+      prNumber = parseInt(
+        prNumberInput || context.payload.pull_request?.number?.toString() || "0"
+      );
+
+      if (!prNumber || isNaN(prNumber)) {
+        core.setFailed(
+          "Could not determine PR number. Make sure this action runs on pull_request events."
+        );
+        return;
+      }
+
+      previewIdentifier = prNumber.toString();
+      branchName = context.payload.pull_request?.head?.ref || context.ref.replace("refs/heads/", "");
+    } else if (context.eventName === "push") {
+      // Push event
+      previewType = "branch";
+      branchName = context.ref.replace("refs/heads/", "");
+
+      if (!branchName) {
+        core.setFailed("Could not determine branch name from push event.");
+        return;
+      }
+
+      previewIdentifier = branchName;
+    } else {
       core.setFailed(
-        "Could not determine PR number. Make sure this action runs on pull_request events."
+        `Unsupported event type: ${context.eventName}. This action supports 'pull_request' and 'push' events.`
       );
       return;
     }
@@ -54,24 +85,31 @@ async function run(): Promise<void> {
     // Determine action based on event
     let actionToPerform = action;
     if (action === "auto") {
-      if (context.payload.action === "closed") {
+      if (context.eventName === "pull_request" && context.payload.action === "closed") {
         actionToPerform = "destroy";
       } else if (
+        context.eventName === "pull_request" &&
         ["opened", "synchronize", "reopened"].includes(
           context.payload.action || ""
         )
       ) {
         actionToPerform = "deploy";
+      } else if (context.eventName === "push") {
+        actionToPerform = "deploy";
       }
     }
 
+    const previewLabel =
+      previewType === "pull_request"
+        ? `PR #${prNumber}`
+        : `branch ${branchName}`;
     core.info(
-      `🚀 PreviewCloud Action: ${actionToPerform} for PR #${prNumber}`
+      `🚀 PreviewCloud Action: ${actionToPerform} for ${previewLabel}`
     );
 
     // Handle destroy action
     if (actionToPerform === "destroy") {
-      await destroyPreview(apiUrl, apiToken, prNumber, context);
+      await destroyPreview(apiUrl, apiToken, previewIdentifier, previewType, context);
       core.setOutput("status", "destroyed");
       core.info("✅ Preview environment destroyed");
       return;
@@ -103,10 +141,11 @@ async function run(): Promise<void> {
 
     // Build deployment payload
     const payload = {
-      prNumber: parseInt(prNumber),
+      previewType,
+      prNumber: previewType === "pull_request" ? prNumber : undefined,
       repoName: context.repo.repo,
       repoOwner: context.repo.owner,
-      branch: context.payload.pull_request?.head?.ref || "unknown",
+      branch: branchName,
       commitSha: context.sha,
       config,
       secrets,
@@ -146,16 +185,23 @@ async function run(): Promise<void> {
       core.info(`   ${service}: ${url}`);
     }
 
-    // Comment on PR
-    if (commentOnPR && process.env.GITHUB_TOKEN) {
+    // Comment on PR (only for pull_request events)
+    if (
+      commentOnPR &&
+      octokit &&
+      previewType === "pull_request" &&
+      prNumber
+    ) {
       await commentOnPullRequest(
         octokit,
         context,
-        prNumber,
+        prNumber.toString(),
         response.data.urls,
         response.data.previewId,
         deploymentTime
       );
+    } else if (commentOnPR && previewType === "pull_request" && !octokit) {
+      core.warning("GITHUB_TOKEN not available. Skipping PR comment.");
     }
   } catch (error: any) {
     core.setFailed(`Action failed: ${error.message}`);
@@ -235,19 +281,22 @@ async function waitForDeploymentComplete(
 async function destroyPreview(
   apiUrl: string,
   apiToken: string,
-  prNumber: string,
+  previewIdentifier: string,
+  previewType: "pull_request" | "branch",
   context: typeof github.context
 ): Promise<void> {
-  core.info(`🗑️  Destroying preview for PR #${prNumber}...`);
+  const previewLabel =
+    previewType === "pull_request"
+      ? `PR #${previewIdentifier}`
+      : `branch ${previewIdentifier}`;
+  core.info(`🗑️  Destroying preview for ${previewLabel}...`);
 
-  await axios.delete(
-    `${apiUrl}/api/previews/${context.repo.owner}/${context.repo.repo}/${prNumber}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-      },
-    }
-  );
+  // Use previewId endpoint (supports both PR and branch)
+  await axios.delete(`${apiUrl}/api/previews/${previewIdentifier}`, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+    },
+  });
 }
 
 async function commentOnPullRequest(
