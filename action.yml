@@ -31,10 +31,11 @@ inputs:
   
   secrets:
     description: |
-      Secrets to pass to PreviewCloud (multiline format)
-      Example:
-        JWT_SECRET=${{ secrets.JWT_SECRET }}
-        STRIPE_KEY=${{ secrets.STRIPE_KEY }}
+      Secrets to pass to PreviewCloud (multiline format).
+      Format: KEY=VALUE (one per line).
+      Example: JWT_SECRET=your-secret-value
+               STRIPE_KEY=your-stripe-key
+      In your workflow file, use GitHub secrets context to pass repository secrets.
     required: false
     default: ''
   
