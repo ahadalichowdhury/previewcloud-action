@@ -10,6 +10,7 @@ interface PreviewConfig {
   database?: any;
   secrets?: string[];
   env?: Record<string, string>;
+  password?: string;
 }
 
 interface PreviewResponse {
@@ -127,34 +128,42 @@ async function run(): Promise<void> {
 
     core.info(`📄 Loaded config from ${configFile}`);
 
-    // Parse secrets
-    const secrets: Record<string, string> = {};
+    // Parse secrets into env variables
+    const env: Record<string, string> = {};
     if (secretsInput) {
       const secretLines = secretsInput.split("\n").filter((line) => line.trim());
       for (const line of secretLines) {
         const [key, value] = line.split("=");
         if (key && value) {
-          secrets[key.trim()] = value.trim();
+          env[key.trim()] = value.trim();
         }
       }
     }
 
-    // Build deployment payload
-    const payload = {
+    // Merge config.env with parsed secrets
+    if (config.env) {
+      Object.assign(env, config.env);
+    }
+
+    // Build deployment payload - match backend PreviewConfig interface
+    const payload: any = {
       previewType,
       prNumber: previewType === "pull_request" ? prNumber : undefined,
       repoName: context.repo.repo,
       repoOwner: context.repo.owner,
       branch: branchName,
       commitSha: context.sha,
-      config,
-      secrets,
-      metadata: {
-        actor: context.actor,
-        eventName: context.eventName,
-        action: context.payload.action,
-      },
+      services: config.services, // Extract services from config
+      database: config.database, // Extract database from config
     };
+
+    // Add optional fields only if they exist
+    if (Object.keys(env).length > 0) {
+      payload.env = env;
+    }
+    if (config.password) {
+      payload.password = config.password;
+    }
 
     core.info("🔨 Deploying preview environment...");
 
