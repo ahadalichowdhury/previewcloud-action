@@ -165,6 +165,19 @@ async function run(): Promise<void> {
       payload.password = config.password;
     }
 
+    // Debug: Log payload structure (without sensitive data)
+    core.debug(`Payload structure: ${JSON.stringify({
+      previewType: payload.previewType,
+      prNumber: payload.prNumber,
+      repoName: payload.repoName,
+      repoOwner: payload.repoOwner,
+      branch: payload.branch,
+      commitSha: payload.commitSha?.substring(0, 7),
+      servicesCount: Object.keys(payload.services || {}).length,
+      hasDatabase: !!payload.database,
+      hasEnv: !!payload.env,
+    }, null, 2)}`);
+
     core.info("🔨 Deploying preview environment...");
 
     // Deploy preview
@@ -252,20 +265,36 @@ async function deployPreview(
 
     return response.data;
   } catch (error: any) {
-    // Enhanced error handling
+    // Enhanced error handling with detailed logging
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
       const errorData = error.response.data;
-      const errorMessage = errorData?.message || errorData?.error?.message || error.message || `Request failed with status code ${status}`;
 
-      core.error(`Backend Error (${status}): ${JSON.stringify(errorData, null, 2)}`);
+      // Log full error response for debugging
+      core.error(`=== Backend Error Response (${status}) ===`);
+      core.error(`Status: ${status}`);
+      core.error(`Headers: ${JSON.stringify(error.response.headers, null, 2)}`);
+      core.error(`Data: ${JSON.stringify(errorData, null, 2)}`);
+      core.error(`=========================================`);
+
+      // Extract error message from various possible structures
+      const errorMessage =
+        errorData?.error?.message ||
+        errorData?.message ||
+        errorData?.error ||
+        error.message ||
+        `Request failed with status code ${status}`;
+
       throw new Error(`${errorMessage} (Status: ${status})`);
     } else if (error.request) {
       // Request made but no response
+      core.error(`No response received from server`);
+      core.error(`Request config: ${JSON.stringify(error.config, null, 2)}`);
       throw new Error(`No response from server: ${error.message}`);
     } else {
       // Error setting up request
+      core.error(`Request setup error: ${error.message}`);
       throw new Error(`Request setup error: ${error.message}`);
     }
   }
