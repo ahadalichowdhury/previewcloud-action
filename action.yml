@@ -13,22 +13,22 @@ inputs:
   api-token:
     description: 'PreviewCloud API token (from dashboard or GitHub secrets)'
     required: true
-  
+
   api-url:
     description: 'PreviewCloud API URL'
     required: false
     default: 'https://api.previewcloud.cloud'
-  
+
   config-file:
     description: 'Path to preview.yaml configuration file'
     required: false
     default: 'preview.yaml'
-  
+
   working-directory:
     description: 'Working directory for the action'
     required: false
     default: '.'
-  
+
   secrets:
     description: |
       Secrets to pass to PreviewCloud (multiline format).
@@ -38,45 +38,60 @@ inputs:
       In your workflow file, use GitHub secrets context to pass repository secrets.
     required: false
     default: ''
-  
+
   pr-number:
     description: 'Pull request number (auto-detected if not provided)'
     required: false
     default: ''
-  
+
   action:
     description: 'Action to perform: deploy, destroy, or auto (default: auto)'
     required: false
     default: 'auto'
-  
+
   comment-on-pr:
     description: 'Post a comment on the PR with preview URLs (default: true)'
     required: false
     default: 'true'
-  
+
   wait-for-deployment:
     description: 'Wait for deployment to complete (default: true)'
     required: false
     default: 'true'
-  
+
   timeout:
     description: 'Deployment timeout in seconds (default: 600)'
     required: false
     default: '600'
 
+  registry:
+    description: 'Docker registry URL (e.g., docker.io, ghcr.io, or your private registry). If not provided, images are built but not pushed.'
+    required: false
+    default: ''
+
+  registry-username:
+    description: 'Registry username (for authentication)'
+    required: false
+    default: ''
+
+  registry-password:
+    description: 'Registry password or token (use GitHub secrets)'
+    required: false
+    default: ''
+
 outputs:
   preview-id:
     description: 'Unique ID of the preview environment'
-  
+
   preview-url:
     description: 'Primary preview URL (web service if available)'
-  
+
   preview-urls:
     description: 'JSON object with all service URLs'
-  
+
   status:
     description: 'Deployment status: success, failed, or destroyed'
-  
+
   deployment-time:
     description: 'Time taken for deployment in seconds'
 

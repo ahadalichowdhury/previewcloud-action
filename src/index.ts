@@ -4,6 +4,7 @@ import axios from "axios";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import * as path from "path";
+import { buildAndPushImages } from "./docker-builder";
 
 interface PreviewConfig {
   services: Record<string, any>;
@@ -145,6 +146,29 @@ async function run(): Promise<void> {
       Object.assign(env, config.env);
     }
 
+    // Build Docker images (GitHub Action has the code, so it builds)
+    core.info("🔨 Building Docker images...");
+    const registry = core.getInput("registry") || undefined;
+    const registryUsername = core.getInput("registry-username") || undefined;
+    const registryPassword = core.getInput("registry-password") || undefined;
+
+    const imageTags = await buildAndPushImages(
+      config.services,
+      previewIdentifier,
+      registry,
+      registryUsername,
+      registryPassword
+    );
+
+    // Update services config with image tags
+    const servicesWithImages: Record<string, any> = {};
+    for (const [serviceName, serviceConfig] of Object.entries(config.services)) {
+      servicesWithImages[serviceName] = {
+        ...serviceConfig,
+        imageTag: imageTags[serviceName] || serviceConfig.imageTag, // Use built image or provided tag
+      };
+    }
+
     // Build deployment payload - match backend PreviewConfig interface
     const payload: any = {
       previewType,
@@ -153,7 +177,7 @@ async function run(): Promise<void> {
       repoOwner: context.repo.owner,
       branch: branchName,
       commitSha: context.sha,
-      services: config.services, // Extract services from config
+      services: servicesWithImages, // Services with image tags
       database: config.database, // Extract database from config
     };
 
