@@ -2,7 +2,6 @@ import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 import * as fs from "fs";
 import * as path from "path";
-import { buildApplicationIfNeeded } from "./build-detector";
 import { ServiceConfig } from "./config-parser";
 
 export interface BuildResult {
@@ -95,33 +94,71 @@ export async function buildAndPushImages(
         );
       }
 
-      // Auto-build application if needed
-      await buildApplicationIfNeeded(serviceConfig, finalDockerfilePath);
+      // Check if build directory is needed (for Dockerfiles that COPY build)
+      const dockerfileContent = fs.readFileSync(finalDockerfilePath, "utf8");
+      const needsBuildDir = /COPY\s+build\s+/i.test(dockerfileContent);
 
-      // Verify build directory exists after auto-build
-      const buildDirPath = path.join(contextPath, "build");
-      if (!fs.existsSync(buildDirPath)) {
-        // List what's actually in the context directory
-        const contextContents = fs.existsSync(contextPath)
-          ? fs.readdirSync(contextPath).join(", ")
-          : "directory does not exist";
+      if (needsBuildDir) {
+        const buildDirPath = path.join(contextPath, "build");
+        if (!fs.existsSync(buildDirPath)) {
+          // List what's actually in the context directory
+          const contextContents = fs.existsSync(contextPath)
+            ? fs.readdirSync(contextPath).join(", ")
+            : "directory does not exist";
 
-        throw new Error(
-          `❌ Build directory not found after auto-build!\n` +
-          `   Expected: ${buildDirPath}\n` +
-          `   Context directory contents: ${contextContents}\n` +
-          `   Dockerfile expects: COPY build /usr/share/nginx/html\n\n` +
-          `   Please ensure your build process creates a 'build' directory, or add build steps to your workflow.`
-        );
+          throw new Error(
+            `❌ Build directory not found!\n` +
+            `   Expected: ${buildDirPath}\n` +
+            `   Context directory contents: ${contextContents}\n` +
+            `   Dockerfile expects: COPY build /usr/share/nginx/html\n\n` +
+            `   Solution: Add build steps to your workflow BEFORE the PreviewCloud action.\n` +
+            `   Example:\n` +
+            `     - name: Build frontend\n` +
+            `       run: |\n` +
+            `         cd frontend\n` +
+            `         npm install\n` +
+            `         npm run build`
+          );
+        }
+        core.info(`   ✅ Build directory found: ${buildDirPath}`);
       }
-
-      core.info(`   ✅ Build directory found: ${buildDirPath}`);
 
       // Check if context path exists
       if (!fs.existsSync(contextPath)) {
         throw new Error(
           `Build context path does not exist: ${contextPath}\n` +
           `Make sure your application is built before running PreviewCloud action.`
+        );
+      }
+
+      // Check for .dockerignore that might exclude build directory
+      const dockerignorePath = path.join(contextPath, ".dockerignore");
+      if (fs.existsSync(dockerignorePath)) {
+        const dockerignoreContent = fs.readFileSync(dockerignorePath, "utf8");
+        if (dockerignoreContent.includes("build") || dockerignoreContent.includes("build/")) {
+          core.warning(
+            `⚠️  WARNING: .dockerignore file excludes 'build' directory!\n` +
+            `   This will prevent Docker from copying the build directory.\n` +
+            `   Please remove 'build' or 'build/' from .dockerignore file.`
+          );
+          throw new Error(
+            `.dockerignore is excluding the 'build' directory.\n` +
+            `Remove 'build' or 'build/' from ${dockerignorePath}`
+          );
+        }
+      }
+
+      // List what Docker will actually see in build context
+      const contextFiles = fs.readdirSync(contextPath);
+      core.info(`   Build context contains: ${contextFiles.join(", ")}`);
+
+      if (!contextFiles.includes("build")) {
+        throw new Error(
+          `❌ 'build' directory not found in Docker build context!\n` +
+          `   Context path: ${contextPath}\n` +
+          `   Files in context: ${contextFiles.join(", ")}\n` +
+          `   This might be caused by .dockerignore excluding 'build' directory.\n` +
+          `   Check for .dockerignore file in: ${contextPath}`
         );
       }
 

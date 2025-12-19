@@ -38640,142 +38640,6 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 502:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.buildApplicationIfNeeded = buildApplicationIfNeeded;
-const core = __importStar(__nccwpck_require__(7484));
-const exec = __importStar(__nccwpck_require__(5236));
-const fs = __importStar(__nccwpck_require__(9896));
-const path = __importStar(__nccwpck_require__(6928));
-/**
- * Detect project type and build automatically
- */
-async function buildApplicationIfNeeded(serviceConfig, dockerfilePath) {
-    const contextPath = path.dirname(dockerfilePath);
-    const buildDirPath = path.join(contextPath, "build");
-    // Check if build directory already exists
-    if (fs.existsSync(buildDirPath)) {
-        core.info(`✅ Build directory already exists: ${buildDirPath}`);
-        return;
-    }
-    core.info(`🔨 Build directory not found. Auto-building application...`);
-    // Check for package.json (Node.js project)
-    const packageJsonPath = path.join(contextPath, "package.json");
-    if (fs.existsSync(packageJsonPath)) {
-        await buildNodeApp(contextPath);
-        return;
-    }
-    // Check for requirements.txt (Python project)
-    const requirementsPath = path.join(contextPath, "requirements.txt");
-    if (fs.existsSync(requirementsPath)) {
-        await buildPythonApp(contextPath);
-        return;
-    }
-    // Check for go.mod (Go project)
-    const goModPath = path.join(contextPath, "go.mod");
-    if (fs.existsSync(goModPath)) {
-        await buildGoApp(contextPath);
-        return;
-    }
-    // If we get here, we couldn't auto-detect
-    core.warning(`⚠️  Could not auto-detect build system.\n` +
-        `   Build directory not found: ${buildDirPath}\n` +
-        `   Dockerfile expects: COPY build /usr/share/nginx/html\n` +
-        `   Please add build steps to your workflow or ensure build directory exists.`);
-}
-async function buildNodeApp(contextPath) {
-    core.info(`📦 Detected Node.js project. Installing dependencies...`);
-    try {
-        // Install dependencies
-        await exec.exec("npm", ["install"], {
-            cwd: contextPath,
-        });
-        core.info(`🔨 Building Node.js application...`);
-        // Run build script
-        await exec.exec("npm", ["run", "build"], {
-            cwd: contextPath,
-        });
-        core.info(`✅ Node.js build completed successfully`);
-    }
-    catch (error) {
-        core.error(`❌ Failed to build Node.js application: ${error}`);
-        throw error;
-    }
-}
-async function buildPythonApp(contextPath) {
-    core.info(`🐍 Detected Python project. Installing dependencies...`);
-    try {
-        await exec.exec("pip", ["install", "-r", "requirements.txt"], {
-            cwd: contextPath,
-        });
-        // Python apps might not need a build step, but check for setup.py or pyproject.toml
-        const setupPyPath = path.join(contextPath, "setup.py");
-        if (fs.existsSync(setupPyPath)) {
-            await exec.exec("python", ["setup.py", "build"], {
-                cwd: contextPath,
-            });
-        }
-        core.info(`✅ Python build completed`);
-    }
-    catch (error) {
-        core.error(`❌ Failed to build Python application: ${error}`);
-        throw error;
-    }
-}
-async function buildGoApp(contextPath) {
-    core.info(`🐹 Detected Go project. Building...`);
-    try {
-        await exec.exec("go", ["build", "-o", "app", "./..."], {
-            cwd: contextPath,
-        });
-        core.info(`✅ Go build completed`);
-    }
-    catch (error) {
-        core.error(`❌ Failed to build Go application: ${error}`);
-        throw error;
-    }
-}
-
-
-/***/ }),
-
 /***/ 1933:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -38942,7 +38806,6 @@ const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const fs = __importStar(__nccwpck_require__(9896));
 const path = __importStar(__nccwpck_require__(6928));
-const build_detector_1 = __nccwpck_require__(502);
 /**
  * Build Docker images for services and push to registry
  */
@@ -39006,26 +38869,56 @@ async function buildAndPushImages(services, previewId, workingDirectory = proces
                     `   Check your preview.yaml - dockerfile path should be relative to repo root.\n` +
                     `   Example: frontend/Dockerfile (not docker.io/frontend/Dockerfile)`);
             }
-            // Auto-build application if needed
-            await (0, build_detector_1.buildApplicationIfNeeded)(serviceConfig, finalDockerfilePath);
-            // Verify build directory exists after auto-build
-            const buildDirPath = path.join(contextPath, "build");
-            if (!fs.existsSync(buildDirPath)) {
-                // List what's actually in the context directory
-                const contextContents = fs.existsSync(contextPath)
-                    ? fs.readdirSync(contextPath).join(", ")
-                    : "directory does not exist";
-                throw new Error(`❌ Build directory not found after auto-build!\n` +
-                    `   Expected: ${buildDirPath}\n` +
-                    `   Context directory contents: ${contextContents}\n` +
-                    `   Dockerfile expects: COPY build /usr/share/nginx/html\n\n` +
-                    `   Please ensure your build process creates a 'build' directory, or add build steps to your workflow.`);
+            // Check if build directory is needed (for Dockerfiles that COPY build)
+            const dockerfileContent = fs.readFileSync(finalDockerfilePath, "utf8");
+            const needsBuildDir = /COPY\s+build\s+/i.test(dockerfileContent);
+            if (needsBuildDir) {
+                const buildDirPath = path.join(contextPath, "build");
+                if (!fs.existsSync(buildDirPath)) {
+                    // List what's actually in the context directory
+                    const contextContents = fs.existsSync(contextPath)
+                        ? fs.readdirSync(contextPath).join(", ")
+                        : "directory does not exist";
+                    throw new Error(`❌ Build directory not found!\n` +
+                        `   Expected: ${buildDirPath}\n` +
+                        `   Context directory contents: ${contextContents}\n` +
+                        `   Dockerfile expects: COPY build /usr/share/nginx/html\n\n` +
+                        `   Solution: Add build steps to your workflow BEFORE the PreviewCloud action.\n` +
+                        `   Example:\n` +
+                        `     - name: Build frontend\n` +
+                        `       run: |\n` +
+                        `         cd frontend\n` +
+                        `         npm install\n` +
+                        `         npm run build`);
+                }
+                core.info(`   ✅ Build directory found: ${buildDirPath}`);
             }
-            core.info(`   ✅ Build directory found: ${buildDirPath}`);
             // Check if context path exists
             if (!fs.existsSync(contextPath)) {
                 throw new Error(`Build context path does not exist: ${contextPath}\n` +
                     `Make sure your application is built before running PreviewCloud action.`);
+            }
+            // Check for .dockerignore that might exclude build directory
+            const dockerignorePath = path.join(contextPath, ".dockerignore");
+            if (fs.existsSync(dockerignorePath)) {
+                const dockerignoreContent = fs.readFileSync(dockerignorePath, "utf8");
+                if (dockerignoreContent.includes("build") || dockerignoreContent.includes("build/")) {
+                    core.warning(`⚠️  WARNING: .dockerignore file excludes 'build' directory!\n` +
+                        `   This will prevent Docker from copying the build directory.\n` +
+                        `   Please remove 'build' or 'build/' from .dockerignore file.`);
+                    throw new Error(`.dockerignore is excluding the 'build' directory.\n` +
+                        `Remove 'build' or 'build/' from ${dockerignorePath}`);
+                }
+            }
+            // List what Docker will actually see in build context
+            const contextFiles = fs.readdirSync(contextPath);
+            core.info(`   Build context contains: ${contextFiles.join(", ")}`);
+            if (!contextFiles.includes("build")) {
+                throw new Error(`❌ 'build' directory not found in Docker build context!\n` +
+                    `   Context path: ${contextPath}\n` +
+                    `   Files in context: ${contextFiles.join(", ")}\n` +
+                    `   This might be caused by .dockerignore excluding 'build' directory.\n` +
+                    `   Check for .dockerignore file in: ${contextPath}`);
             }
             // Build Docker image
             const buildArgs = [
