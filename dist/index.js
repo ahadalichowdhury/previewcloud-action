@@ -38913,10 +38913,12 @@ async function buildAndPushImages(services, previewId, workingDirectory = proces
             // List what Docker will actually see in build context
             const contextFiles = fs.readdirSync(contextPath);
             core.info(`   Build context contains: ${contextFiles.join(", ")}`);
-            if (!contextFiles.includes("build")) {
+            // Only check for build directory if Dockerfile needs it
+            if (needsBuildDir && !contextFiles.includes("build")) {
                 throw new Error(`❌ 'build' directory not found in Docker build context!\n` +
                     `   Context path: ${contextPath}\n` +
                     `   Files in context: ${contextFiles.join(", ")}\n` +
+                    `   Dockerfile expects: COPY build /usr/share/nginx/html\n` +
                     `   This might be caused by .dockerignore excluding 'build' directory.\n` +
                     `   Check for .dockerignore file in: ${contextPath}`);
             }
