@@ -6,4 +6,4 @@ export interface BuildResult {
 /**
  * Build Docker images for services and push to registry
  */
-export declare function buildAndPushImages(services: Record<string, ServiceConfig>, previewId: string, registry?: string, registryUsername?: string, registryPassword?: string): Promise<Record<string, string>>;
+export declare function buildAndPushImages(services: Record<string, ServiceConfig>, previewId: string, workingDirectory?: string, registry?: string, registryUsername?: string, registryPassword?: string): Promise<Record<string, string>>;

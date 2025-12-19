@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 import * as fs from "fs";
 import * as path from "path";
+import { buildApplicationIfNeeded } from "./build-detector";
 import { ServiceConfig } from "./config-parser";
 
 export interface BuildResult {
@@ -15,6 +16,7 @@ export interface BuildResult {
 export async function buildAndPushImages(
   services: Record<string, ServiceConfig>,
   previewId: string,
+  workingDirectory: string = process.cwd(),
   registry?: string,
   registryUsername?: string,
   registryPassword?: string
@@ -59,11 +61,42 @@ export async function buildAndPushImages(
 
       core.info(`🔨 Building image for ${serviceName}: ${imageTag}`);
 
-      // Determine build context
-      const dockerfilePath = path.resolve(serviceConfig.dockerfile);
+      // Determine build context - resolve relative to working directory
+      const dockerfilePath = path.isAbsolute(serviceConfig.dockerfile)
+        ? serviceConfig.dockerfile
+        : path.resolve(workingDirectory, serviceConfig.dockerfile);
+
       const contextPath = serviceConfig.context
-        ? path.resolve(serviceConfig.context)
+        ? (path.isAbsolute(serviceConfig.context)
+            ? serviceConfig.context
+            : path.resolve(workingDirectory, serviceConfig.context))
         : path.dirname(dockerfilePath);
+
+      // Debug: Log paths
+      core.info(`   Dockerfile: ${dockerfilePath}`);
+      core.info(`   Build context: ${contextPath}`);
+
+      // Auto-build application if needed
+      await buildApplicationIfNeeded(serviceConfig, dockerfilePath);
+
+      // Verify build directory exists after auto-build
+      const buildDirPath = path.join(contextPath, "build");
+      if (!fs.existsSync(buildDirPath)) {
+        // List what's actually in the context directory
+        const contextContents = fs.existsSync(contextPath)
+          ? fs.readdirSync(contextPath).join(", ")
+          : "directory does not exist";
+
+        throw new Error(
+          `❌ Build directory not found after auto-build!\n` +
+          `   Expected: ${buildDirPath}\n` +
+          `   Context directory contents: ${contextContents}\n` +
+          `   Dockerfile expects: COPY build /usr/share/nginx/html\n\n` +
+          `   Please ensure your build process creates a 'build' directory, or add build steps to your workflow.`
+        );
+      }
+
+      core.info(`   ✅ Build directory found: ${buildDirPath}`);
 
       // Check if context path exists
       if (!fs.existsSync(contextPath)) {
