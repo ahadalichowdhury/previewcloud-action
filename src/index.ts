@@ -165,7 +165,30 @@ async function run(): Promise<void> {
       payload.password = config.password;
     }
 
+    // Debug: Log payload structure (without sensitive data)
+    core.debug(`Payload structure: ${JSON.stringify({
+      previewType: payload.previewType,
+      prNumber: payload.prNumber,
+      repoName: payload.repoName,
+      repoOwner: payload.repoOwner,
+      branch: payload.branch,
+      commitSha: payload.commitSha?.substring(0, 7),
+      servicesCount: Object.keys(payload.services || {}).length,
+      hasDatabase: !!payload.database,
+      hasEnv: !!payload.env,
+    }, null, 2)}`);
+
     core.info("🔨 Deploying preview environment...");
+
+    // Debug: Log payload structure (without sensitive data)
+    core.debug(`Payload preview: ${JSON.stringify({
+      previewType: payload.previewType,
+      repoOwner: payload.repoOwner,
+      repoName: payload.repoName,
+      branch: payload.branch,
+      servicesCount: Object.keys(payload.services || {}).length,
+      hasDatabase: !!payload.database,
+    }, null, 2)}`);
 
     // Deploy preview
     const startTime = Date.now();
@@ -213,8 +236,26 @@ async function run(): Promise<void> {
       core.warning("GITHUB_TOKEN not available. Skipping PR comment.");
     }
   } catch (error: any) {
+    // Log full error details
+    core.error(`\n=== Action Failed ===`);
+    core.error(`Error Message: ${error.message}`);
+
+    // If it's an axios error with response, log it again for visibility
+    if (error.response) {
+      core.error(`\nBackend Response Details:`);
+      core.error(`Status: ${error.response.status}`);
+      core.error(`Data: ${JSON.stringify(error.response.data, null, 2)}`);
+    }
+
+    if (error.stack) {
+      core.error(`\nStack Trace:`);
+      core.error(error.stack);
+    }
+
+    core.error(`=====================\n`);
+
+    // Set failed with the error message
     core.setFailed(`Action failed: ${error.message}`);
-    core.error(error.stack || error.toString());
   }
 }
 
@@ -225,30 +266,83 @@ async function deployPreview(
   wait: boolean,
   timeout: number
 ): Promise<PreviewResponse> {
-  const response = await axios.post(`${apiUrl}/api/previews`, payload, {
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      "Content-Type": "application/json",
-    },
-    timeout: timeout * 1000,
-  });
+  try {
+    const response = await axios.post(`${apiUrl}/api/previews`, payload, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      },
+      timeout: timeout * 1000,
+    });
 
-  if (!response.data.success) {
-    throw new Error(response.data.message || "Deployment failed");
+    if (!response.data.success) {
+      const errorMessage = response.data.message || response.data.error?.message || "Deployment failed";
+      throw new Error(errorMessage);
+    }
+
+    // If wait is enabled, poll for completion
+    if (wait) {
+      const previewId = response.data.data.previewId;
+      return await waitForDeploymentComplete(
+        apiUrl,
+        apiToken,
+        previewId,
+        timeout
+      );
+    }
+
+    return response.data;
+  } catch (error: any) {
+    // Enhanced error handling with detailed logging
+    if (error.response) {
+      // Server responded with error status
+      const status = error.response.status;
+      const errorData = error.response.data;
+
+      // Always log full error response for debugging (even if it's verbose)
+      core.error(`\n=== Backend Error Response (${status}) ===`);
+      core.error(`Status Code: ${status}`);
+      core.error(`Error Data: ${JSON.stringify(errorData, null, 2)}`);
+      if (error.response.headers) {
+        core.error(`Response Headers: ${JSON.stringify(error.response.headers, null, 2)}`);
+      }
+      core.error(`=========================================\n`);
+
+      // Extract error message from various possible structures
+      let errorMessage = `Request failed with status code ${status}`;
+
+      if (errorData) {
+        if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (typeof errorData.error === 'string') {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      }
+
+      // Include full error data in the message for debugging
+      const fullError = `${errorMessage} (Status: ${status})\n\nFull error response:\n${JSON.stringify(errorData, null, 2)}`;
+      throw new Error(fullError);
+    } else if (error.request) {
+      // Request made but no response
+      core.error(`\n=== No Response from Server ===`);
+      core.error(`Request URL: ${error.config?.url}`);
+      core.error(`Request Method: ${error.config?.method}`);
+      core.error(`Request Headers: ${JSON.stringify(error.config?.headers, null, 2)}`);
+      core.error(`================================\n`);
+      throw new Error(`No response from server: ${error.message}`);
+    } else {
+      // Error setting up request
+      core.error(`\n=== Request Setup Error ===`);
+      core.error(`Error: ${error.message}`);
+      core.error(`Stack: ${error.stack}`);
+      core.error(`=======================\n`);
+      throw new Error(`Request setup error: ${error.message}`);
+    }
   }
-
-  // If wait is enabled, poll for completion
-  if (wait) {
-    const previewId = response.data.data.previewId;
-    return await waitForDeploymentComplete(
-      apiUrl,
-      apiToken,
-      previewId,
-      timeout
-    );
-  }
-
-  return response.data;
 }
 
 async function waitForDeploymentComplete(
