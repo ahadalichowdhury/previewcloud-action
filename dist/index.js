@@ -38776,6 +38776,128 @@ async function buildGoApp(contextPath) {
 
 /***/ }),
 
+/***/ 1933:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parseConfig = parseConfig;
+const core = __importStar(__nccwpck_require__(7484));
+const fs = __importStar(__nccwpck_require__(9896));
+const yaml = __importStar(__nccwpck_require__(4281));
+const path = __importStar(__nccwpck_require__(6928));
+/**
+ * Parse preview.yaml configuration file
+ */
+async function parseConfig(configFile, workingDirectory) {
+    const configPath = path.join(workingDirectory, configFile);
+    // Check if file exists
+    if (!fs.existsSync(configPath)) {
+        throw new Error(`Configuration file not found: ${configPath}`);
+    }
+    try {
+        // Read and parse YAML
+        const fileContents = fs.readFileSync(configPath, "utf8");
+        const config = yaml.load(fileContents);
+        // Validate configuration
+        validateConfig(config);
+        // Resolve relative paths
+        resolveServicePaths(config, workingDirectory);
+        return config;
+    }
+    catch (error) {
+        throw new Error(`Failed to parse config file: ${error.message}`);
+    }
+}
+/**
+ * Validate configuration structure
+ */
+function validateConfig(config) {
+    if (!config) {
+        throw new Error("Configuration is empty");
+    }
+    if (!config.services || typeof config.services !== "object") {
+        throw new Error("services field is required and must be an object");
+    }
+    // Validate each service
+    for (const [name, service] of Object.entries(config.services)) {
+        if (!service.dockerfile) {
+            throw new Error(`Service '${name}' is missing required field: dockerfile`);
+        }
+        // Check if dockerfile exists
+        if (!fs.existsSync(service.dockerfile)) {
+            core.warning(`Dockerfile not found at path: ${service.dockerfile}`);
+        }
+        if (service.port && (service.port < 1 || service.port > 65535)) {
+            throw new Error(`Service '${name}' has invalid port: ${service.port}`);
+        }
+    }
+    // Validate database config if present
+    if (config.database) {
+        const validTypes = ["postgres", "mysql", "mongodb"];
+        if (!validTypes.includes(config.database.type)) {
+            throw new Error(`Invalid database type: ${config.database.type}. Must be one of: ${validTypes.join(", ")}`);
+        }
+    }
+}
+/**
+ * Resolve relative paths in service configurations
+ */
+function resolveServicePaths(config, workingDirectory) {
+    for (const service of Object.values(config.services)) {
+        // Resolve dockerfile path
+        if (!path.isAbsolute(service.dockerfile)) {
+            service.dockerfile = path.join(workingDirectory, service.dockerfile);
+        }
+        // Resolve context path
+        if (service.context && !path.isAbsolute(service.context)) {
+            service.context = path.join(workingDirectory, service.context);
+        }
+    }
+    // Resolve migrations path if present
+    if (config.database?.migrations &&
+        !path.isAbsolute(config.database.migrations)) {
+        config.database.migrations = path.join(workingDirectory, config.database.migrations);
+    }
+}
+
+
+/***/ }),
+
 /***/ 3685:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -38857,20 +38979,35 @@ async function buildAndPushImages(services, previewId, workingDirectory = proces
                     ? `${targetRegistry}/${imageName}:latest`
                     : `previewcloud/${imageName}:latest`;
             core.info(`🔨 Building image for ${serviceName}: ${imageTag}`);
-            // Determine build context - resolve relative to working directory
-            const dockerfilePath = path.isAbsolute(serviceConfig.dockerfile)
+            // Paths should already be resolved by parseConfig, but handle both cases
+            // Paths should already be absolute from parseConfig, but handle both cases
+            let dockerfilePath = path.isAbsolute(serviceConfig.dockerfile)
                 ? serviceConfig.dockerfile
                 : path.resolve(workingDirectory, serviceConfig.dockerfile);
-            const contextPath = serviceConfig.context
-                ? (path.isAbsolute(serviceConfig.context)
+            // Remove any invalid path components (like docker.io accidentally included)
+            dockerfilePath = path.normalize(dockerfilePath.replace(/[\/\\]docker\.io[\/\\]/gi, '/'));
+            let contextPath;
+            if (serviceConfig.context) {
+                contextPath = path.isAbsolute(serviceConfig.context)
                     ? serviceConfig.context
-                    : path.resolve(workingDirectory, serviceConfig.context))
-                : path.dirname(dockerfilePath);
+                    : path.resolve(workingDirectory, serviceConfig.context);
+                contextPath = path.normalize(contextPath.replace(/[\/\\]docker\.io[\/\\]/gi, '/'));
+            }
+            else {
+                contextPath = path.dirname(dockerfilePath);
+            }
+            const finalDockerfilePath = dockerfilePath;
             // Debug: Log paths
-            core.info(`   Dockerfile: ${dockerfilePath}`);
+            core.info(`   Dockerfile: ${finalDockerfilePath}`);
             core.info(`   Build context: ${contextPath}`);
+            // Verify dockerfile exists
+            if (!fs.existsSync(finalDockerfilePath)) {
+                throw new Error(`❌ Dockerfile not found: ${finalDockerfilePath}\n` +
+                    `   Check your preview.yaml - dockerfile path should be relative to repo root.\n` +
+                    `   Example: frontend/Dockerfile (not docker.io/frontend/Dockerfile)`);
+            }
             // Auto-build application if needed
-            await (0, build_detector_1.buildApplicationIfNeeded)(serviceConfig, dockerfilePath);
+            await (0, build_detector_1.buildApplicationIfNeeded)(serviceConfig, finalDockerfilePath);
             // Verify build directory exists after auto-build
             const buildDirPath = path.join(contextPath, "build");
             if (!fs.existsSync(buildDirPath)) {
@@ -38894,7 +39031,7 @@ async function buildAndPushImages(services, previewId, workingDirectory = proces
             const buildArgs = [
                 "build",
                 "-f",
-                dockerfilePath,
+                finalDockerfilePath,
                 "-t",
                 imageTag,
             ];
@@ -38976,7 +39113,6 @@ const core = __importStar(__nccwpck_require__(7484));
 const github = __importStar(__nccwpck_require__(3228));
 const axios_1 = __importDefault(__nccwpck_require__(7269));
 const fs = __importStar(__nccwpck_require__(9896));
-const yaml = __importStar(__nccwpck_require__(4281));
 const path = __importStar(__nccwpck_require__(6928));
 const docker_builder_1 = __nccwpck_require__(3685);
 async function run() {
@@ -39058,8 +39194,9 @@ async function run() {
             core.setFailed(`Config file not found: ${configPath}`);
             return;
         }
-        const configContent = fs.readFileSync(configPath, "utf8");
-        const config = yaml.load(configContent);
+        // Use parseConfig to properly resolve paths
+        const { parseConfig } = await Promise.resolve().then(() => __importStar(__nccwpck_require__(1933)));
+        const config = await parseConfig(configFile, workingDirectory);
         core.info(`📄 Loaded config from ${configFile}`);
         // Parse secrets into env variables
         const env = {};
@@ -39081,7 +39218,7 @@ async function run() {
         const registry = core.getInput("registry") || undefined;
         const registryUsername = core.getInput("registry-username") || undefined;
         const registryPassword = core.getInput("registry-password") || undefined;
-        const imageTags = await (0, docker_builder_1.buildAndPushImages)(config.services, previewIdentifier, registry, registryUsername, registryPassword);
+        const imageTags = await (0, docker_builder_1.buildAndPushImages)(config.services, previewIdentifier, workingDirectory, registry, registryUsername, registryPassword);
         // Update services config with image tags
         const servicesWithImages = {};
         for (const [serviceName, serviceConfig] of Object.entries(config.services)) {

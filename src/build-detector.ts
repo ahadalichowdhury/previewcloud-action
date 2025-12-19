@@ -111,3 +111,4 @@ async function buildGoApp(contextPath: string): Promise<void> {
     throw error;
   }
 }
+

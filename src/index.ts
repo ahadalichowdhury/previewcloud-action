@@ -2,7 +2,6 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import axios from "axios";
 import * as fs from "fs";
-import * as yaml from "js-yaml";
 import * as path from "path";
 import { buildAndPushImages } from "./docker-builder";
 
@@ -124,8 +123,9 @@ async function run(): Promise<void> {
       return;
     }
 
-    const configContent = fs.readFileSync(configPath, "utf8");
-    const config = yaml.load(configContent) as PreviewConfig;
+    // Use parseConfig to properly resolve paths
+    const { parseConfig } = await import("./config-parser");
+    const config = await parseConfig(configFile, workingDirectory);
 
     core.info(`📄 Loaded config from ${configFile}`);
 
@@ -155,6 +155,7 @@ async function run(): Promise<void> {
     const imageTags = await buildAndPushImages(
       config.services,
       previewIdentifier,
+      workingDirectory,
       registry,
       registryUsername,
       registryPassword
@@ -165,7 +166,7 @@ async function run(): Promise<void> {
     for (const [serviceName, serviceConfig] of Object.entries(config.services)) {
       servicesWithImages[serviceName] = {
         ...serviceConfig,
-        imageTag: imageTags[serviceName] || serviceConfig.imageTag, // Use built image or provided tag
+        imageTag: imageTags[serviceName] || (serviceConfig as any).imageTag, // Use built image or provided tag
       };
     }
 

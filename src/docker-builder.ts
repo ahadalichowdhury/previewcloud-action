@@ -61,23 +61,42 @@ export async function buildAndPushImages(
 
       core.info(`🔨 Building image for ${serviceName}: ${imageTag}`);
 
-      // Determine build context - resolve relative to working directory
-      const dockerfilePath = path.isAbsolute(serviceConfig.dockerfile)
+      // Paths should already be resolved by parseConfig, but handle both cases
+      // Paths should already be absolute from parseConfig, but handle both cases
+      let dockerfilePath = path.isAbsolute(serviceConfig.dockerfile)
         ? serviceConfig.dockerfile
         : path.resolve(workingDirectory, serviceConfig.dockerfile);
 
-      const contextPath = serviceConfig.context
-        ? (path.isAbsolute(serviceConfig.context)
-            ? serviceConfig.context
-            : path.resolve(workingDirectory, serviceConfig.context))
-        : path.dirname(dockerfilePath);
+      // Remove any invalid path components (like docker.io accidentally included)
+      dockerfilePath = path.normalize(dockerfilePath.replace(/[\/\\]docker\.io[\/\\]/gi, '/'));
+
+      let contextPath: string;
+      if (serviceConfig.context) {
+        contextPath = path.isAbsolute(serviceConfig.context)
+          ? serviceConfig.context
+          : path.resolve(workingDirectory, serviceConfig.context);
+        contextPath = path.normalize(contextPath.replace(/[\/\\]docker\.io[\/\\]/gi, '/'));
+      } else {
+        contextPath = path.dirname(dockerfilePath);
+      }
+
+      const finalDockerfilePath = dockerfilePath;
 
       // Debug: Log paths
-      core.info(`   Dockerfile: ${dockerfilePath}`);
+      core.info(`   Dockerfile: ${finalDockerfilePath}`);
       core.info(`   Build context: ${contextPath}`);
 
+      // Verify dockerfile exists
+      if (!fs.existsSync(finalDockerfilePath)) {
+        throw new Error(
+          `❌ Dockerfile not found: ${finalDockerfilePath}\n` +
+          `   Check your preview.yaml - dockerfile path should be relative to repo root.\n` +
+          `   Example: frontend/Dockerfile (not docker.io/frontend/Dockerfile)`
+        );
+      }
+
       // Auto-build application if needed
-      await buildApplicationIfNeeded(serviceConfig, dockerfilePath);
+      await buildApplicationIfNeeded(serviceConfig, finalDockerfilePath);
 
       // Verify build directory exists after auto-build
       const buildDirPath = path.join(contextPath, "build");
@@ -110,7 +129,7 @@ export async function buildAndPushImages(
       const buildArgs: string[] = [
         "build",
         "-f",
-        dockerfilePath,
+        finalDockerfilePath,
         "-t",
         imageTag,
       ];
