@@ -38640,6 +38640,130 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 3685:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.buildAndPushImages = buildAndPushImages;
+const core = __importStar(__nccwpck_require__(7484));
+const exec = __importStar(__nccwpck_require__(5236));
+const path = __importStar(__nccwpck_require__(6928));
+/**
+ * Build Docker images for services and push to registry
+ */
+async function buildAndPushImages(services, previewId, registry, registryUsername, registryPassword) {
+    const imageTags = {};
+    // Default to Docker Hub if no registry specified
+    const targetRegistry = registry || "docker.io";
+    const useRegistry = !!registry || !!registryUsername; // Use registry if explicitly set or credentials provided
+    // Login to registry if credentials provided
+    if (useRegistry && registryUsername && registryPassword) {
+        core.info(`🔐 Logging into registry: ${targetRegistry}`);
+        await exec.exec("docker", [
+            "login",
+            targetRegistry,
+            "-u",
+            registryUsername,
+            "-p",
+            registryPassword,
+        ]);
+    }
+    // Build and push each service
+    for (const [serviceName, serviceConfig] of Object.entries(services)) {
+        if (!serviceConfig.dockerfile) {
+            core.warning(`Service ${serviceName} has no dockerfile, skipping build`);
+            continue;
+        }
+        try {
+            // Generate image tag
+            const imageName = `${previewId}-${serviceName}`.toLowerCase();
+            // Use registry format: registry/username/image:tag or just image:tag for Docker Hub
+            const imageTag = useRegistry && registryUsername
+                ? `${targetRegistry}/${registryUsername}/${imageName}:latest`
+                : useRegistry
+                    ? `${targetRegistry}/${imageName}:latest`
+                    : `previewcloud/${imageName}:latest`;
+            core.info(`🔨 Building image for ${serviceName}: ${imageTag}`);
+            // Determine build context
+            const dockerfilePath = path.resolve(serviceConfig.dockerfile);
+            const contextPath = serviceConfig.context
+                ? path.resolve(serviceConfig.context)
+                : path.dirname(dockerfilePath);
+            // Build Docker image
+            const buildArgs = [
+                "build",
+                "-f",
+                dockerfilePath,
+                "-t",
+                imageTag,
+            ];
+            // Add build args if provided
+            if (serviceConfig.buildArgs) {
+                for (const [key, value] of Object.entries(serviceConfig.buildArgs)) {
+                    buildArgs.push("--build-arg", `${key}=${value}`);
+                }
+            }
+            buildArgs.push(contextPath);
+            await exec.exec("docker", buildArgs);
+            // Push to registry if using registry
+            if (useRegistry) {
+                core.info(`📤 Pushing ${imageTag} to registry...`);
+                await exec.exec("docker", ["push", imageTag]);
+            }
+            else {
+                core.warning(`⚠️  No registry configured. Image ${imageTag} built locally but not pushed. ` +
+                    `Backend won't be able to pull this image. Please configure a registry.`);
+            }
+            // Store image tag for this service
+            imageTags[serviceName] = imageTag;
+            core.info(`✅ Built and pushed: ${imageTag}`);
+        }
+        catch (error) {
+            core.error(`Failed to build image for ${serviceName}: ${error}`);
+            throw error;
+        }
+    }
+    return imageTags;
+}
+
+
+/***/ }),
+
 /***/ 9407:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -38688,6 +38812,7 @@ const axios_1 = __importDefault(__nccwpck_require__(7269));
 const fs = __importStar(__nccwpck_require__(9896));
 const yaml = __importStar(__nccwpck_require__(4281));
 const path = __importStar(__nccwpck_require__(6928));
+const docker_builder_1 = __nccwpck_require__(3685);
 async function run() {
     try {
         // Get inputs
@@ -38785,6 +38910,20 @@ async function run() {
         if (config.env) {
             Object.assign(env, config.env);
         }
+        // Build Docker images (GitHub Action has the code, so it builds)
+        core.info("🔨 Building Docker images...");
+        const registry = core.getInput("registry") || undefined;
+        const registryUsername = core.getInput("registry-username") || undefined;
+        const registryPassword = core.getInput("registry-password") || undefined;
+        const imageTags = await (0, docker_builder_1.buildAndPushImages)(config.services, previewIdentifier, registry, registryUsername, registryPassword);
+        // Update services config with image tags
+        const servicesWithImages = {};
+        for (const [serviceName, serviceConfig] of Object.entries(config.services)) {
+            servicesWithImages[serviceName] = {
+                ...serviceConfig,
+                imageTag: imageTags[serviceName] || serviceConfig.imageTag, // Use built image or provided tag
+            };
+        }
         // Build deployment payload - match backend PreviewConfig interface
         const payload = {
             previewType,
@@ -38793,7 +38932,7 @@ async function run() {
             repoOwner: context.repo.owner,
             branch: branchName,
             commitSha: context.sha,
-            services: config.services, // Extract services from config
+            services: servicesWithImages, // Services with image tags
             database: config.database, // Extract database from config
         };
         // Add optional fields only if they exist
