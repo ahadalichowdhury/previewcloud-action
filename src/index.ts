@@ -237,10 +237,23 @@ async function run(): Promise<void> {
     core.info(`⏱️  Deployment time: ${deploymentTime}s`);
 
     // Log URLs
+    // Note: GitHub Actions automatically masks parts of URLs (showing ***) in logs for security
+    // This is normal behavior - the actual URLs work correctly and are accessible
     core.info("🌐 Preview URLs:");
+
+    // Show repo owner separately so users can see the actual value even if GitHub Actions masks it in URLs
+    core.info(`📦 Repository Owner: ${payload.repoOwner}`);
+    core.info(`🔗 Preview ID: ${response.data.previewId}`);
+
+    // Log each service URL (may show *** if GitHub Actions masks it)
     for (const [service, url] of Object.entries(response.data.urls)) {
       core.info(`   ${service}: ${url}`);
     }
+
+    // Also show URL format for reference
+    core.info("");
+    core.info("💡 URL Format: {previewId}-{repoOwner}.{serviceName}.{baseDomain}");
+    core.info(`   Example: ${response.data.previewId}-${payload.repoOwner}.{service}.{domain}`);
 
     // Comment on PR (only for pull_request events)
     if (
