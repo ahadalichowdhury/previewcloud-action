@@ -38682,6 +38682,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.buildAndPushImages = buildAndPushImages;
 const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
+const fs = __importStar(__nccwpck_require__(9896));
 const path = __importStar(__nccwpck_require__(6928));
 /**
  * Build Docker images for services and push to registry
@@ -38724,6 +38725,11 @@ async function buildAndPushImages(services, previewId, registry, registryUsernam
             const contextPath = serviceConfig.context
                 ? path.resolve(serviceConfig.context)
                 : path.dirname(dockerfilePath);
+            // Check if context path exists
+            if (!fs.existsSync(contextPath)) {
+                throw new Error(`Build context path does not exist: ${contextPath}\n` +
+                    `Make sure your application is built before running PreviewCloud action.`);
+            }
             // Build Docker image
             const buildArgs = [
                 "build",

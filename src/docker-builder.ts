@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
+import * as fs from "fs";
 import * as path from "path";
 import { ServiceConfig } from "./config-parser";
 
@@ -64,6 +65,14 @@ export async function buildAndPushImages(
         ? path.resolve(serviceConfig.context)
         : path.dirname(dockerfilePath);
 
+      // Check if context path exists
+      if (!fs.existsSync(contextPath)) {
+        throw new Error(
+          `Build context path does not exist: ${contextPath}\n` +
+          `Make sure your application is built before running PreviewCloud action.`
+        );
+      }
+
       // Build Docker image
       const buildArgs: string[] = [
         "build",
@@ -106,4 +115,3 @@ export async function buildAndPushImages(
 
   return imageTags;
 }
-
